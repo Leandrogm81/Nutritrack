@@ -18,15 +18,11 @@ export default function Dashboard({ data }: DashboardProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header with Streak */}
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Olá, {data.profile?.name || 'NutriTracker'}!</h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Vamos bater as metas de hoje?</p>
-        </div>
-        <div className="flex items-center gap-1 bg-orange-50 dark:bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-100 dark:border-orange-500/20">
-          <span className="text-orange-500 font-bold text-sm">{data.streak}</span>
-          <span className="text-orange-500">🔥</span>
         </div>
       </div>
 

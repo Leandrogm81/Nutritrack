@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Plus, X, Sparkles, Loader2, Camera, Upload, ScanLine, CheckCircle2 } from 'lucide-react';
+import { Plus, X, Sparkles, Loader2, Camera, Upload, ScanLine, CheckCircle2, Barcode } from 'lucide-react';
 import { Meal, PlannedMeal } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { geminiService } from '../services/geminiService';
+import BarcodeScanner from './BarcodeScanner';
 
 interface MealFormProps {
   onAddMeal: (meal: Omit<Meal, 'id' | 'timestamp'>) => void;
@@ -13,6 +14,8 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAiMode, setIsAiMode] = useState(true);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [aiInput, setAiInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelInputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +65,35 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
       setIsAiLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (labelInputRef.current) labelInputRef.current.value = '';
+    }
+  };
+
+  const handleBarcodeScan = async (barcode: string) => {
+    setIsScannerOpen(false);
+    setIsAiLoading(true);
+    try {
+      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      const data = await response.json();
+      
+      if (data.status === 1 && data.product) {
+        const product = data.product;
+        const nutriments = product.nutriments || {};
+        
+        fillManualForm({
+          name: product.product_name || 'Produto Desconhecido',
+          calories: Math.round(nutriments['energy-kcal_100g'] || 0),
+          protein: Math.round(nutriments.proteins_100g || 0),
+          carbs: Math.round(nutriments.carbohydrates_100g || 0),
+          fats: Math.round(nutriments.fat_100g || 0)
+        });
+      } else {
+        setErrorMessage('Produto não encontrado na base de dados.');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar produto:', error);
+      setErrorMessage('Erro ao buscar produto.');
+    } finally {
+      setIsAiLoading(false);
     }
   };
 
@@ -147,6 +179,15 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
                 </button>
               </div>
 
+              {errorMessage && (
+                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-900/50 rounded-2xl flex justify-between items-center">
+                  <span className="text-red-600 dark:text-red-400 text-sm font-medium">{errorMessage}</span>
+                  <button onClick={() => setErrorMessage(null)} className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full transition-colors">
+                    <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  </button>
+                </div>
+              )}
+
               {isAiMode && todaysMeals.length > 0 && (
                 <div className="mb-6 sm:mb-8">
                   <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-2 sm:mb-3">Sugestões do seu Plano de Hoje</p>
@@ -176,24 +217,33 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
 
               {isAiMode ? (
                 <div className="space-y-6 sm:space-y-8">
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-4">
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center gap-2 p-4 sm:p-8 bg-emerald-50 dark:bg-emerald-500/5 border-2 border-dashed border-emerald-200 dark:border-emerald-500/20 rounded-2xl sm:rounded-[2rem] hover:bg-emerald-100 dark:hover:bg-emerald-500/10 transition-all group"
+                      className="flex flex-col items-center justify-center gap-2 p-3 sm:p-6 bg-emerald-50 dark:bg-emerald-500/5 border-2 border-dashed border-emerald-200 dark:border-emerald-500/20 rounded-2xl sm:rounded-[2rem] hover:bg-emerald-100 dark:hover:bg-emerald-500/10 transition-all group"
                     >
                       <div className="p-2 sm:p-4 bg-white dark:bg-zinc-800 rounded-xl sm:rounded-2xl shadow-sm group-hover:scale-110 transition-transform">
-                        <Camera className="w-5 h-5 sm:w-7 sm:h-7 text-emerald-600 dark:text-emerald-500" />
+                        <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-500" />
                       </div>
-                      <span className="text-[9px] sm:text-[10px] font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-widest">Foto do Prato</span>
+                      <span className="text-[8px] sm:text-[10px] font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-widest text-center">Foto</span>
                     </button>
                     <button
                       onClick={() => labelInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center gap-2 p-4 sm:p-8 bg-blue-50 dark:bg-blue-500/5 border-2 border-dashed border-blue-200 dark:border-blue-500/20 rounded-2xl sm:rounded-[2rem] hover:bg-blue-100 dark:hover:bg-blue-500/10 transition-all group"
+                      className="flex flex-col items-center justify-center gap-2 p-3 sm:p-6 bg-blue-50 dark:bg-blue-500/5 border-2 border-dashed border-blue-200 dark:border-blue-500/20 rounded-2xl sm:rounded-[2rem] hover:bg-blue-100 dark:hover:bg-blue-500/10 transition-all group"
                     >
                       <div className="p-2 sm:p-4 bg-white dark:bg-zinc-800 rounded-xl sm:rounded-2xl shadow-sm group-hover:scale-110 transition-transform">
-                        <ScanLine className="w-5 h-5 sm:w-7 sm:h-7 text-blue-600 dark:text-blue-500" />
+                        <ScanLine className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-500" />
                       </div>
-                      <span className="text-[9px] sm:text-[10px] font-bold text-blue-700 dark:text-blue-500 uppercase tracking-widest">Ler Rótulo</span>
+                      <span className="text-[8px] sm:text-[10px] font-bold text-blue-700 dark:text-blue-500 uppercase tracking-widest text-center">Rótulo</span>
+                    </button>
+                    <button
+                      onClick={() => setIsScannerOpen(true)}
+                      className="flex flex-col items-center justify-center gap-2 p-3 sm:p-6 bg-purple-50 dark:bg-purple-500/5 border-2 border-dashed border-purple-200 dark:border-purple-500/20 rounded-2xl sm:rounded-[2rem] hover:bg-purple-100 dark:hover:bg-purple-500/10 transition-all group"
+                    >
+                      <div className="p-2 sm:p-4 bg-white dark:bg-zinc-800 rounded-xl sm:rounded-2xl shadow-sm group-hover:scale-110 transition-transform">
+                        <Barcode className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-500" />
+                      </div>
+                      <span className="text-[8px] sm:text-[10px] font-bold text-purple-700 dark:text-purple-500 uppercase tracking-widest text-center">Código</span>
                     </button>
                     <input
                       type="file"
@@ -332,6 +382,14 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
               )}
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isScannerOpen && (
+          <BarcodeScanner 
+            onScan={handleBarcodeScan} 
+            onClose={() => setIsScannerOpen(false)} 
+          />
         )}
       </AnimatePresence>
     </>

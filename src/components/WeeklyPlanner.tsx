@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { DailyData, PlannedMeal, Meal } from '../types';
-import { Calendar, Plus, Trash2, Clock, Utensils, ChevronRight, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { Calendar, Plus, Trash2, Clock, Utensils, ChevronRight, ChevronLeft, CheckCircle2, Wand2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { geminiService } from '../services/geminiService';
 
 interface WeeklyPlannerProps {
   data: DailyData;
@@ -29,6 +30,10 @@ const MEAL_TYPES = [
 export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: WeeklyPlannerProps) {
   const [selectedDay, setSelectedDay] = useState('seg');
   const [isAdding, setIsAdding] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [isPastingDiet, setIsPastingDiet] = useState(false);
+  const [dietText, setDietText] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
   
   const [newMeal, setNewMeal] = useState<Omit<PlannedMeal, 'id'>>({
     name: '',
@@ -39,6 +44,46 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
     day: 'seg',
     type: 'cafe'
   });
+  
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  const handleClearAll = () => {
+    onUpdatePlanner([]);
+    setIsClearing(false);
+    setMessage({ type: 'success', text: 'Planejamento limpo com sucesso!' });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handlePasteDiet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dietText.trim()) return;
+
+    setIsGenerating(true);
+    try {
+      const parsedMeals = await geminiService.parseDietText(dietText);
+      
+      if (parsedMeals.length === 0) {
+        throw new Error("Nenhuma refeição encontrada no texto.");
+      }
+
+      const newMeals = parsedMeals.map((meal: any) => ({
+        ...meal,
+        id: Math.random().toString(36).substring(2, 9)
+      }));
+
+      onUpdatePlanner(newMeals);
+      setMessage({ type: 'success', text: 'Dieta importada com sucesso!' });
+      setIsPastingDiet(false);
+      setDietText('');
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error) {
+      console.error('Error parsing diet:', error);
+      setMessage({ type: 'error', text: 'Erro ao analisar o texto. Tente novamente.' });
+      setTimeout(() => setMessage(null), 3000);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleAddMeal = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,13 +106,50 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
           <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">Planejador</h2>
           <p className="text-zinc-500 dark:text-zinc-400">Organize suas refeições da semana.</p>
         </div>
-        <button
-          onClick={() => setIsAdding(true)}
-          className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
+        <div className="flex items-center gap-2">
+          {data.plannedMeals && data.plannedMeals.length > 0 && (
+            <button
+              onClick={() => setIsClearing(true)}
+              className="p-4 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl hover:scale-105 transition-all"
+              title="Limpar todo o planejamento"
+            >
+              <Trash2 className="w-6 h-6" />
+            </button>
+          )}
+          <button
+            onClick={() => setIsPastingDiet(true)}
+            className="p-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-2xl hover:scale-105 transition-all"
+            title="Importar dieta por texto (IA)"
+          >
+            <Wand2 className="w-6 h-6" />
+          </button>
+          <button
+            onClick={() => setIsAdding(true)}
+            className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all"
+            title="Adicionar refeição"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+        </div>
       </header>
+
+      <AnimatePresence>
+        {message && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className={`p-4 rounded-2xl text-sm font-medium flex items-center gap-2 ${
+              message.type === 'success' 
+                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' 
+                : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
+            }`}
+          >
+            {message.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+            {message.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Day Selector */}
       <div className="flex gap-3 overflow-x-auto pb-6 no-scrollbar -mx-4 px-4">
@@ -254,6 +336,103 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
                   className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl hover:bg-emerald-600 transition-all mt-4 shadow-lg shadow-emerald-500/20"
                 >
                   Adicionar ao Plano
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Clear Confirmation Modal */}
+      <AnimatePresence>
+        {isClearing && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsClearing(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl text-center"
+            >
+              <div className="w-16 h-16 bg-rose-100 dark:bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold mb-2 dark:text-white">Limpar Planejamento?</h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+                Tem certeza que deseja apagar todas as refeições planejadas para a semana? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsClearing(false)}
+                  className="flex-1 py-3 rounded-2xl font-bold text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleClearAll}
+                  className="flex-1 py-3 rounded-2xl font-bold text-white bg-rose-500 hover:bg-rose-600 transition-colors shadow-lg shadow-rose-500/20"
+                >
+                  Limpar Tudo
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Paste Diet Modal */}
+      <AnimatePresence>
+        {isPastingDiet && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isGenerating && setIsPastingDiet(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl"
+            >
+              <h3 className="text-xl font-bold mb-2 dark:text-white flex items-center gap-2">
+                <Wand2 className="w-5 h-5 text-emerald-500" />
+                Importar Dieta com IA
+              </h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+                Cole o texto da sua dieta abaixo. Nossa IA vai ler e organizar tudo automaticamente no seu planejador.
+              </p>
+              
+              <form onSubmit={handlePasteDiet} className="space-y-4">
+                <textarea
+                  value={dietText}
+                  onChange={e => setDietText(e.target.value)}
+                  className="w-full h-48 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20 dark:text-white resize-none"
+                  placeholder="Ex: Segunda-feira: Café da manhã - 2 ovos (150kcal, 12g prot...), Almoço..."
+                  required
+                  disabled={isGenerating}
+                />
+                
+                <button
+                  type="submit"
+                  disabled={isGenerating || !dietText.trim()}
+                  className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl hover:bg-emerald-600 transition-all mt-4 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Analisando dieta...
+                    </>
+                  ) : (
+                    'Importar Dieta'
+                  )}
                 </button>
               </form>
             </motion.div>

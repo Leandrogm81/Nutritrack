@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile, DailyData } from '../types';
-import { User, Scale, Ruler, Calendar, Activity, Target, Save, CheckCircle2 } from 'lucide-react';
+import { User, Scale, Ruler, Calendar, Activity, Target, Save, CheckCircle2, Utensils } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface UserProfileFormProps {
@@ -16,7 +16,10 @@ export default function UserProfileForm({ profile, onSave }: UserProfileFormProp
     height: 170,
     gender: 'male',
     activityLevel: 'moderate',
-    goal: 'maintain'
+    goal: 'maintain',
+    dietType: 'balanced',
+    dietaryRestrictions: '',
+    customMacros: { protein: 0, carbs: 0, fats: 0 }
   });
 
   const [saved, setSaved] = useState(false);
@@ -42,17 +45,38 @@ export default function UserProfileForm({ profile, onSave }: UserProfileFormProp
     const calories = Math.round(tdee);
     
     // Macros
-    // Protein: 2g per kg
-    const protein = Math.round(p.weight * 2);
-    const proteinKcal = protein * 4;
-    
-    // Fats: 25% of total calories
-    const fatsKcal = calories * 0.25;
-    const fats = Math.round(fatsKcal / 9);
-    
-    // Carbs: Remaining
-    const carbsKcal = calories - proteinKcal - fatsKcal;
-    const carbs = Math.round(carbsKcal / 4);
+    let protein = 0;
+    let fats = 0;
+    let carbs = 0;
+
+    if (p.dietType === 'custom' && p.customMacros) {
+      protein = p.customMacros.protein;
+      carbs = p.customMacros.carbs;
+      fats = p.customMacros.fats;
+    } else {
+      // Default: Balanced
+      let proteinRatio = 0.3;
+      let fatsRatio = 0.25;
+      let carbsRatio = 0.45;
+
+      if (p.dietType === 'low-carb') {
+        proteinRatio = 0.4;
+        fatsRatio = 0.4;
+        carbsRatio = 0.2;
+      } else if (p.dietType === 'ketogenic') {
+        proteinRatio = 0.2;
+        fatsRatio = 0.75;
+        carbsRatio = 0.05;
+      } else if (p.dietType === 'hypertrophy') {
+        proteinRatio = 0.35;
+        fatsRatio = 0.2;
+        carbsRatio = 0.45;
+      }
+
+      protein = Math.round((calories * proteinRatio) / 4);
+      fats = Math.round((calories * fatsRatio) / 9);
+      carbs = Math.round((calories * carbsRatio) / 4);
+    }
 
     return {
       calories,
@@ -202,6 +226,75 @@ export default function UserProfileForm({ profile, onSave }: UserProfileFormProp
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+              <Utensils className="w-3 h-3" /> Tipo de Dieta
+            </label>
+            <div className="relative">
+              <select
+                value={formData.dietType || 'balanced'}
+                onChange={e => setFormData({ ...formData, dietType: e.target.value as any })}
+                className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all dark:text-white appearance-none cursor-pointer"
+              >
+                <option value="balanced">Balanceada</option>
+                <option value="low-carb">Low Carb</option>
+                <option value="ketogenic">Cetogênica</option>
+                <option value="hypertrophy">Hipertrofia</option>
+                <option value="custom">Personalizada (Sugerir Macros)</option>
+              </select>
+            </div>
+          </div>
+
+          {formData.dietType === 'custom' && (
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+                  Proteína (g)
+                </label>
+                <input
+                  type="number"
+                  value={formData.customMacros?.protein || 0}
+                  onChange={e => setFormData({ ...formData, customMacros: { ...formData.customMacros!, protein: parseInt(e.target.value) || 0 } })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all dark:text-white"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+                  Carbo (g)
+                </label>
+                <input
+                  type="number"
+                  value={formData.customMacros?.carbs || 0}
+                  onChange={e => setFormData({ ...formData, customMacros: { ...formData.customMacros!, carbs: parseInt(e.target.value) || 0 } })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all dark:text-white"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+                  Gordura (g)
+                </label>
+                <input
+                  type="number"
+                  value={formData.customMacros?.fats || 0}
+                  onChange={e => setFormData({ ...formData, customMacros: { ...formData.customMacros!, fats: parseInt(e.target.value) || 0 } })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all dark:text-white"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+              Restrições ou Sugestões Alimentares
+            </label>
+            <textarea
+              value={formData.dietaryRestrictions || ''}
+              onChange={e => setFormData({ ...formData, dietaryRestrictions: e.target.value })}
+              className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all dark:text-white resize-none h-24"
+              placeholder="Ex: Sou vegano, não gosto de brócolis, alergia a amendoim..."
+            />
           </div>
         </div>
 

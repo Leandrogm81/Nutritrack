@@ -61,6 +61,57 @@ export const geminiService = {
     }
   },
 
+  async parseDietText(text: string): Promise<PlannedMeal[]> {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Analise o seguinte texto que contém um plano de dieta e extraia as refeições planejadas para a semana.
+      Texto: "${text}"
+      
+      Regras:
+      1. Identifique o dia da semana ('seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'). Se não for especificado, assuma 'seg' ou distribua logicamente.
+      2. Identifique o tipo de refeição ('cafe', 'almoco', 'lanche', 'jantar').
+      3. Extraia ou estime as calorias (kcal) e os macronutrientes (proteínas, carboidratos, gorduras) em gramas.
+      4. O nome deve ser um resumo curto do prato.
+      
+      Responda APENAS com um array JSON de objetos, onde cada objeto tem o seguinte formato:
+      {
+        "name": "Nome da Refeição",
+        "calories": 400,
+        "protein": 30,
+        "carbs": 40,
+        "fats": 15,
+        "day": "seg",
+        "type": "cafe"
+      }`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              calories: { type: Type.NUMBER },
+              protein: { type: Type.NUMBER },
+              carbs: { type: Type.NUMBER },
+              fats: { type: Type.NUMBER },
+              day: { type: Type.STRING, enum: ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'] },
+              type: { type: Type.STRING, enum: ['cafe', 'almoco', 'lanche', 'jantar'] },
+            },
+            required: ["name", "calories", "protein", "carbs", "fats", "day", "type"],
+          }
+        }
+      }
+    });
+
+    try {
+      const parsed = JSON.parse(response.text || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      throw new Error("Falha ao processar o texto da dieta com a IA");
+    }
+  },
+
   async generateDailyInsights(data: DailyData): Promise<string> {
     const totalCalories = data.meals.reduce((sum, meal) => sum + meal.calories, 0);
     const totalProtein = data.meals.reduce((sum, meal) => sum + meal.protein, 0);
@@ -158,6 +209,8 @@ export const geminiService = {
       - Gênero: ${profile.gender === 'male' ? 'Masculino' : 'Feminino'}
       - Nível de Atividade: ${profile.activityLevel}
       - Objetivo: ${profile.goal === 'lose' ? 'Perder peso' : profile.goal === 'gain' ? 'Ganhar massa' : 'Manter peso'}
+      - Tipo de Dieta: ${profile.dietType || 'balanceada'}
+      - Restrições Alimentares: ${profile.dietaryRestrictions || 'Nenhuma'}
     ` : 'ATENÇÃO: Perfil não preenchido. Peça para o usuário preencher na aba "Perfil" antes de montar qualquer dieta.';
 
     const plannerFunction: FunctionDeclaration = {
@@ -239,6 +292,29 @@ export const geminiService = {
       throw new Error("Perfil não preenchido. Preencha seu perfil antes de gerar uma dieta.");
     }
 
+    // Extract recent meals to understand habits
+    const recentMealsList: string[] = [];
+    if (currentData.meals) {
+      currentData.meals.forEach(m => recentMealsList.push(m.name));
+    }
+    
+    if (currentData.history) {
+      Object.values(currentData.history).forEach(day => {
+        if (day.meals) {
+          day.meals.forEach(m => recentMealsList.push(m.name));
+        }
+      });
+    }
+    
+    // Get unique meal names to avoid a massive string
+    const uniqueMeals = Array.from(new Set(recentMealsList)).slice(0, 20).join(', ');
+
+    const habitsContext = uniqueMeals ? `
+      HÁBITOS ALIMENTARES RECENTES DO USUÁRIO:
+      O usuário tem consumido recentemente: ${uniqueMeals}.
+      Use essas informações para entender as preferências do usuário. Tente incluir alimentos semelhantes ou os mesmos alimentos (se saudáveis e adequados aos macros) na nova dieta, para que seja mais fácil de seguir e mais personalizada.
+    ` : '';
+
     const prompt = `
       Você é um Nutricionista Digital.
       Gere um cardápio ideal para UMA SEMANA COMPLETA (7 dias), com refeições variadas para cada dia (café da manhã, almoço, lanche, jantar), baseado no perfil do usuário.
@@ -251,6 +327,12 @@ export const geminiService = {
       - Gênero: ${profile.gender === 'male' ? 'Masculino' : 'Feminino'}
       - Nível de Atividade: ${profile.activityLevel}
       - Objetivo: ${profile.goal === 'lose' ? 'Perder peso' : profile.goal === 'gain' ? 'Ganhar massa' : 'Manter peso'}
+      - Tipo de Dieta: ${profile.dietType || 'balanceada'}
+      - Restrições Alimentares: ${profile.dietaryRestrictions || 'Nenhuma'}
+      
+      ${habitsContext}
+      
+      IMPORTANTE: A nova dieta deve substituir completamente qualquer dieta anterior.
       
       Retorne APENAS um JSON válido contendo uma lista de TODAS as refeições da semana (4 refeições por dia x 7 dias = 28 refeições).
       Para cada refeição, especifique o dia da semana usando exatamente um destes valores: 'dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'.

@@ -5,18 +5,17 @@ import Dashboard from './components/Dashboard';
 import MealForm from './components/MealForm';
 import WaterTracker from './components/WaterTracker';
 import { 
-  Download, Trash2, Utensils, History, Clock, Activity, 
-  LayoutDashboard, UtensilsCrossed, MessageSquare, ClipboardList,
-  TrendingUp, Calendar as CalendarIcon, User as UserIcon, Award, Moon, Sun, Sparkles
+  Download, Trash2, Utensils, Activity,
+  LayoutDashboard, 
+  TrendingUp, Calendar as CalendarIcon, User as UserIcon, Sparkles
 } from 'lucide-react';
 import CoachInsights from './components/CoachInsights';
 import RecipeSuggestions from './components/RecipeSuggestions';
 import DietGenerator from './components/DietGenerator';
-import SavedDietsList from './components/SavedDietsList';
+import HistoryCalendar from './components/HistoryCalendar';
 import UserProfileForm from './components/UserProfileForm';
 import Analytics from './components/Analytics';
 import WeeklyPlanner from './components/WeeklyPlanner';
-import Achievements from './components/Achievements';
 import ThemeToggle from './components/ThemeToggle';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -32,11 +31,11 @@ const INITIAL_DATA: DailyData = {
     fats: 65,
     water: 2500,
   },
-  savedDiets: [],
   weightHistory: [],
   plannedMeals: [],
-  streak: 0,
   theme: 'light',
+  lastActiveDate: new Date().toISOString().split('T')[0],
+  history: {},
 };
 
 export default function App() {
@@ -45,31 +44,31 @@ export default function App() {
 
   // Ensure data structure is up to date (migration)
   useEffect(() => {
-    const today = new Date().toLocaleDateString();
+    const today = new Date().toISOString().split('T')[0];
     
     setData(prev => {
       let updated = { ...prev };
       let changed = false;
 
-      if (!updated.savedDiets) { updated.savedDiets = []; changed = true; }
       if (!updated.weightHistory) { updated.weightHistory = []; changed = true; }
       if (!updated.plannedMeals) { updated.plannedMeals = []; changed = true; }
-      if (updated.streak === undefined) { updated.streak = 0; changed = true; }
       if (updated.theme === undefined) { updated.theme = 'light'; changed = true; }
+      if (!updated.history) { updated.history = {}; changed = true; }
+      if (!updated.lastActiveDate) { updated.lastActiveDate = today; changed = true; }
 
-      // Streak logic
+      // Daily reset logic
       if (updated.lastActiveDate !== today) {
-        const lastDate = updated.lastActiveDate ? new Date(updated.lastActiveDate) : null;
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        if (lastDate && lastDate.toLocaleDateString() === yesterday.toLocaleDateString()) {
-          updated.streak += 1;
-        } else if (!lastDate) {
-          updated.streak = 1;
-        } else {
-          updated.streak = 1; // Reset if missed a day
+        // Save yesterday's data to history
+        if (updated.lastActiveDate) {
+          updated.history[updated.lastActiveDate] = {
+            meals: [...updated.meals],
+            waterMl: updated.waterMl
+          };
         }
+        
+        // Reset today's data
+        updated.meals = [];
+        updated.waterMl = 0;
         updated.lastActiveDate = today;
         changed = true;
       }
@@ -133,49 +132,6 @@ export default function App() {
     }));
   };
 
-  const savedDietsRef = React.useRef<HTMLDivElement>(null);
-
-  const handleSaveDiet = (content: string) => {
-    try {
-      console.log('Attempting to save diet. Content length:', content.length);
-      if (!content || content.trim().length === 0) {
-        console.warn('Empty content provided to handleSaveDiet');
-        return;
-      }
-
-      // Check for duplicates
-      const isDuplicate = data.savedDiets.some(d => d.content === content);
-      if (isDuplicate) {
-        console.log('Esta dieta já está salva!');
-        return;
-      }
-
-      const title = content.split('\n')[0].substring(0, 40) || 'Nova Dieta';
-      const id = typeof crypto !== 'undefined' && crypto.randomUUID 
-        ? crypto.randomUUID() 
-        : Math.random().toString(36).substring(2, 15);
-        
-      const newDiet = {
-        id,
-        title: title.replace(/[#*]/g, '').trim(),
-        content,
-        timestamp: Date.now(),
-      };
-
-      setData((prev) => {
-        const currentDiets = Array.isArray(prev.savedDiets) ? prev.savedDiets : [];
-        return {
-          ...prev,
-          savedDiets: [newDiet, ...currentDiets],
-        };
-      });
-
-      console.log('Diet saved successfully with ID:', id);
-    } catch (error) {
-      console.error('Error in handleSaveDiet:', error);
-    }
-  };
-
   const handleUpdatePlanner = (meals: PlannedMeal[]) => {
     setData(prev => {
       const mealsWithIds = meals.map(m => ({
@@ -190,27 +146,7 @@ export default function App() {
     });
   };
 
-  const handleDeleteDiet = (id: string) => {
-    console.log('Deleting diet with ID:', id);
-    setData((prev) => {
-      const currentDiets = Array.isArray(prev.savedDiets) ? prev.savedDiets : [];
-      const newDiets = currentDiets.filter((d) => d.id !== id);
-      return {
-        ...prev,
-        savedDiets: newDiets,
-      };
-    });
-  };
 
-  const handleReset = () => {
-    console.log('Resetting daily data...');
-    setData(prev => ({
-      ...prev,
-      meals: [],
-      waterMl: 0,
-    }));
-    console.log('Daily data reset complete.');
-  };
 
   // Daily reset logic: check if the last meal/water was on a different day
   useEffect(() => {
@@ -228,18 +164,7 @@ export default function App() {
     localStorage.setItem('nutritrack_last_update', today);
   }, []);
 
-  const handleExport = () => {
-    const payload = {
-      summary: {
-        totalCalories: data.meals.reduce((s, m) => s + m.calories, 0),
-        totalWater: data.waterMl,
-        mealCount: data.meals.length,
-      },
-      raw: data,
-      exportedAt: new Date().toISOString(),
-    };
-    console.log('Exporting Data Payload:', JSON.stringify(payload, null, 2));
-  };
+
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 pb-32">
@@ -253,20 +178,7 @@ export default function App() {
             <h1 className="text-xl font-bold tracking-tight">NutriTrack</h1>
           </div>
           <div className="flex gap-2">
-            <button 
-              onClick={handleExport}
-              className="p-2 hover:bg-zinc-100 rounded-xl text-zinc-500 transition-colors"
-              title="Exportar Dados"
-            >
-              <Download className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={handleReset}
-              className="p-2 hover:bg-zinc-100 rounded-xl text-zinc-500 transition-colors"
-              title="Resetar Dia"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
+            <ThemeToggle theme={data.theme} onToggle={handleToggleTheme} />
           </div>
         </div>
       </header>
@@ -343,7 +255,7 @@ export default function App() {
               exit={{ opacity: 0, x: 20 }}
               className="px-1"
             >
-              <Analytics data={data} />
+              <Analytics data={data} history={data.history || {}} userProfile={data.profile || null} />
             </motion.div>
           )}
 
@@ -360,13 +272,6 @@ export default function App() {
                 onUpdatePlanner={handleUpdatePlanner} 
                 onLogMeal={handleAddMeal}
               />
-              
-              <div ref={savedDietsRef}>
-                <SavedDietsList 
-                  diets={data.savedDiets} 
-                  onDelete={handleDeleteDiet} 
-                />
-              </div>
             </motion.div>
           )}
 
@@ -397,95 +302,23 @@ export default function App() {
             </motion.div>
           )}
 
-          {activeSection === 'history' && (
-            <motion.div 
-              key="history"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="space-y-8 pb-32 px-1"
-            >
-              <header>
-                <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">Histórico</h2>
-                <p className="text-zinc-500 dark:text-zinc-400">Suas refeições registradas recentemente.</p>
-              </header>
-              <div className="grid grid-cols-1 gap-4">
-                {data.meals.length === 0 ? (
-                  <div className="text-center py-20 bg-zinc-50 dark:bg-zinc-900/50 rounded-[2rem] border-2 border-dashed border-zinc-200 dark:border-zinc-800">
-                    <History className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
-                    <p className="text-zinc-400 font-medium">Nenhuma refeição registrada ainda.</p>
-                  </div>
-                ) : (
-                  data.meals.map((meal) => (
-                    <motion.div 
-                      key={meal.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-black/5 dark:border-white/5 group"
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-2xl group-hover:bg-emerald-50 dark:group-hover:bg-emerald-500/10 transition-colors">
-                            <Utensils className="w-6 h-6 text-zinc-400 dark:text-zinc-500 group-hover:text-emerald-500 transition-colors" />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-zinc-900 dark:text-white">{meal.name}</h4>
-                            <div className="flex items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500 font-medium">
-                              <Clock className="w-3 h-3" />
-                              {new Date(meal.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => handleRemoveMeal(meal.id)}
-                          className="p-2 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2 pt-2 border-t border-zinc-50 dark:border-zinc-800 text-center">
-                        <div>
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase">Kcal</p>
-                          <p className="text-sm font-bold text-emerald-600">{meal.calories}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase">Prot</p>
-                          <p className="text-sm font-bold text-blue-600">{meal.protein}g</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase">Carb</p>
-                          <p className="text-sm font-bold text-amber-600">{meal.carbs}g</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase">Gord</p>
-                          <p className="text-sm font-bold text-rose-600">{meal.fats}g</p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          )}
-
           {activeSection === 'profile' && (
             <motion.div 
               key="profile"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="space-y-8 pb-32 px-1"
+              className="space-y-12 pb-32 px-1"
             >
               <div className="flex justify-between items-center">
                 <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">Configurações</h2>
-                <ThemeToggle theme={data.theme} onToggle={handleToggleTheme} />
               </div>
               
-              <Achievements data={data} />
-
               <UserProfileForm profile={data.profile} onSave={handleSaveProfile} />
+              
+              <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
+                <HistoryCalendar history={data.history || {}} userProfile={data.profile || null} todayData={{ meals: data.meals, waterMl: data.waterMl }} />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

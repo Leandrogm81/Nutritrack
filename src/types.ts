@@ -8,13 +8,6 @@ export interface Meal {
   timestamp: number;
 }
 
-export interface SavedDiet {
-  id: string;
-  title: string;
-  content: string;
-  timestamp: number;
-}
-
 export interface WeightEntry {
   id: string;
   weight: number;
@@ -34,6 +27,13 @@ export interface UserProfile {
   gender: 'male' | 'female';
   activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
   goal: 'lose' | 'maintain' | 'gain';
+  dietType?: 'balanced' | 'low-carb' | 'ketogenic' | 'hypertrophy' | 'custom';
+  customMacros?: {
+    protein: number;
+    carbs: number;
+    fats: number;
+  };
+  dietaryRestrictions?: string;
 }
 
 export interface DailyData {
@@ -46,11 +46,10 @@ export interface DailyData {
     fats: number;
     water: number;
   };
-  savedDiets: SavedDiet[];
   profile?: UserProfile;
   weightHistory: WeightEntry[];
   plannedMeals: PlannedMeal[];
-  streak: number;
-  lastActiveDate?: string;
   theme: 'light' | 'dark';
+  lastActiveDate?: string;
+  history?: Record<string, { meals: Meal[], waterMl: number }>;
 }

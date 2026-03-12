@@ -1,14 +1,16 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-import { DailyData } from '../types';
-import { TrendingUp, Scale, PieChart, Calendar } from 'lucide-react';
+import { DailyData, UserProfile } from '../types';
+import { TrendingUp, Scale, PieChart, Calendar, Activity } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AnalyticsProps {
   data: DailyData;
+  history: Record<string, { meals: any[], waterMl: number }>;
+  userProfile: UserProfile | null;
 }
 
-export default function Analytics({ data }: AnalyticsProps) {
+export default function Analytics({ data, history, userProfile }: AnalyticsProps) {
   // Prepare weight data
   const weightData = data.weightHistory.map(entry => ({
     date: new Date(entry.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
@@ -28,6 +30,36 @@ export default function Analytics({ data }: AnalyticsProps) {
     { name: 'Carbo', value: totalMacros.carbs, color: '#f59e0b' },
     { name: 'Gordura', value: totalMacros.fats, color: '#f43f5e' }
   ];
+
+  // Prepare calorie trend data (last 7 days)
+  const calorieTrendData = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    
+    let cals = 0;
+    if (i === 0) {
+      // Today
+      cals = data.meals.reduce((sum, m) => sum + m.calories, 0);
+    } else {
+      // History
+      const dayData = history[dateStr];
+      cals = dayData ? dayData.meals.reduce((sum, m) => sum + m.calories, 0) : 0;
+    }
+    
+    // Calculate goal calories safely
+    let goalCals = 2000;
+    if (userProfile && userProfile.goal === 'lose') goalCals = 1800;
+    if (userProfile && userProfile.goal === 'gain') goalCals = 2500;
+    if (data.goals && data.goals.calories) goalCals = data.goals.calories;
+
+    calorieTrendData.push({
+      date: d.toLocaleDateString('pt-BR', { weekday: 'short' }),
+      calories: cals,
+      goal: goalCals
+    });
+  }
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -49,6 +81,60 @@ export default function Analytics({ data }: AnalyticsProps) {
         <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">Progresso</h2>
         <p className="text-zinc-500 dark:text-zinc-400">Acompanhe sua evolução física e nutricional.</p>
       </header>
+
+      {/* Calorie Trend Chart */}
+      <section className="bg-white dark:bg-zinc-900 rounded-3xl sm:rounded-[2rem] p-6 sm:p-8 border border-black/5 dark:border-white/5 shadow-sm">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-3 bg-orange-50 dark:bg-orange-500/10 rounded-2xl">
+            <Activity className="w-6 h-6 text-orange-500" />
+          </div>
+          <div>
+            <h3 className="font-bold text-zinc-900 dark:text-white">Tendência de Calorias</h3>
+            <p className="text-xs text-zinc-500">Últimos 7 dias</p>
+          </div>
+        </div>
+
+        <div className="h-[250px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={calorieTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-zinc-100 dark:text-zinc-800" />
+              <XAxis 
+                dataKey="date" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }}
+                dy={10}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }}
+              />
+              <Tooltip 
+                cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 p-4 rounded-2xl shadow-2xl backdrop-blur-md">
+                        <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-2 tracking-widest">{label}</p>
+                        <p className="text-lg font-bold text-orange-500">
+                          {payload[0].value} <span className="text-xs font-medium text-zinc-400">kcal</span>
+                        </p>
+                        <p className="text-xs font-bold text-zinc-500 mt-1">
+                          Meta: {payload[1].value} kcal
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Bar dataKey="calories" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              <Line type="monotone" dataKey="goal" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
 
       {/* Weight Chart */}
       <section className="bg-white dark:bg-zinc-900 rounded-3xl sm:rounded-[2rem] p-6 sm:p-8 border border-black/5 dark:border-white/5 shadow-sm">
