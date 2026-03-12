@@ -376,15 +376,14 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
     >
       <motion.div 
         animate={{ 
-          scale: active ? 1.25 : 1,
-          y: active ? -8 : 0,
-          rotate: active ? [0, -10, 10, 0] : 0
+          scale: active ? 1.1 : 1,
+          y: active ? -4 : 0,
+          rotate: 0
         }}
         transition={{ 
           type: 'spring', 
           stiffness: 400, 
-          damping: 25,
-          rotate: { duration: 0.4, ease: "easeInOut" }
+          damping: 25
         }}
         className={`p-3 rounded-2xl transition-all duration-300 ${
           active 
