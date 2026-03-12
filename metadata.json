@@ -1,0 +1,5 @@
+{
+  "name": "NutriTrack PWA",
+  "description": "MVP de monitoramento de dieta e hidratação com suporte offline.",
+  "requestFramePermissions": ["camera"]
+}
