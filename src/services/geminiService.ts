@@ -1,10 +1,22 @@
 import { GoogleGenAI, Type, GenerateContentResponse, FunctionDeclaration } from "@google/genai";
 import { Meal, DailyData, UserProfile, PlannedMeal } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+let aiClient: GoogleGenAI | null = null;
+
+function getAiClient(): GoogleGenAI {
+  if (!aiClient) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is not set");
+    }
+    aiClient = new GoogleGenAI({ apiKey });
+  }
+  return aiClient;
+}
 
 export const geminiService = {
   async parseMealDescription(description: string): Promise<Omit<Meal, 'id' | 'timestamp'>> {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Analise a seguinte descrição de refeição e extraia os valores nutricionais estimados (calorias, proteínas, carboidratos e gorduras). 
@@ -36,6 +48,7 @@ export const geminiService = {
   },
 
   async analyzeMealImage(base64Image: string, mimeType: string): Promise<Omit<Meal, 'id' | 'timestamp'>> {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: [
@@ -62,6 +75,7 @@ export const geminiService = {
   },
 
   async parseDietText(text: string): Promise<PlannedMeal[]> {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Analise o seguinte texto que contém um plano de dieta e extraia as refeições planejadas para a semana.
@@ -113,6 +127,7 @@ export const geminiService = {
   },
 
   async generateDailyInsights(data: DailyData): Promise<string> {
+    const ai = getAiClient();
     const totalCalories = data.meals.reduce((sum, meal) => sum + meal.calories, 0);
     const totalProtein = data.meals.reduce((sum, meal) => sum + meal.protein, 0);
     const waterPercentage = Math.round((data.waterMl / data.goals.water) * 100);
@@ -140,6 +155,7 @@ export const geminiService = {
   },
 
   async suggestRecipes(remaining: { calories: number, protein: number, carbs: number, fats: number }, profile?: UserProfile): Promise<any[]> {
+    const ai = getAiClient();
     const profileContext = profile ? `
       Contexto do Usuário:
       - Nome: ${profile.name}
@@ -170,6 +186,7 @@ export const geminiService = {
   },
 
   async scanNutritionalLabel(base64Image: string, mimeType: string): Promise<Omit<Meal, 'id' | 'timestamp'>> {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: [
@@ -196,6 +213,7 @@ export const geminiService = {
   },
 
   async chatWithNutritionist(message: string, history: { role: 'user' | 'model', parts: { text: string }[] }[], currentData: DailyData): Promise<AsyncGenerator<GenerateContentResponse>> {
+    const ai = getAiClient();
     const totalCalories = currentData.meals.reduce((sum, meal) => sum + meal.calories, 0);
     const totalProtein = currentData.meals.reduce((sum, meal) => sum + meal.protein, 0);
     
@@ -286,6 +304,7 @@ export const geminiService = {
   },
 
   async generateWeeklyDiet(currentData: DailyData) {
+    const ai = getAiClient();
     const profile = currentData.profile;
     
     if (!profile) {
