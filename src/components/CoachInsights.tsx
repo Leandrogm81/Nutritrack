@@ -29,9 +29,7 @@ export default function CoachInsights({ data }: CoachInsightsProps) {
     }
   };
 
-  useEffect(() => {
-    fetchInsight();
-  }, [data.meals.length, Math.floor(data.waterMl / 500)]); // Refresh on new meals or significant water change
+  // Removido useEffect que chamava fetchInsight automaticamente
 
   return (
     <motion.div 

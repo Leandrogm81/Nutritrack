@@ -38,6 +38,11 @@ export default function RecipeSuggestions({ data }: RecipeSuggestionsProps) {
     }
   };
 
+  const addToPlanner = (recipe: any) => {
+    // Lógica para adicionar ao planejador (simulada por enquanto)
+    alert(`Receita "${recipe.title}" adicionada ao planejador!`);
+  };
+
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between mb-2">
@@ -47,12 +52,12 @@ export default function RecipeSuggestions({ data }: RecipeSuggestionsProps) {
           </div>
           <h3 className="font-bold text-zinc-900 dark:text-white text-xl tracking-tight">O que comer agora?</h3>
         </div>
-        {!hasLoaded && !isLoading && (
+        {!isLoading && (
           <button 
             onClick={fetchRecipes}
             className="text-xs font-bold text-amber-500 uppercase tracking-widest hover:underline"
           >
-            Sugerir
+            {hasLoaded ? 'Atualizar' : 'Sugerir'}
           </button>
         )}
       </div>
@@ -90,7 +95,10 @@ export default function RecipeSuggestions({ data }: RecipeSuggestionsProps) {
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">{recipe.description}</p>
                 <div className="flex items-center justify-between pt-4 border-t border-zinc-50 dark:border-zinc-800">
                   <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">{recipe.macros}</span>
-                  <button className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 group-hover:scale-110 transition-transform">
+                  <button 
+                    onClick={() => addToPlanner(recipe)}
+                    className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 group-hover:scale-110 transition-transform"
+                  >
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>

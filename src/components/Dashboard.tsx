@@ -1,6 +1,6 @@
 import React from 'react';
-import { Activity, Droplets, PieChart } from 'lucide-react';
-import { DailyData } from '../types';
+import { Activity, Droplets, PieChart, Zap, Dumbbell, CheckCircle2 } from 'lucide-react';
+import { DailyData, WorkoutLog } from '../types';
 import { motion } from 'motion/react';
 
 interface DashboardProps {
@@ -8,6 +8,9 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ data }: DashboardProps) {
+  const today = new Date().toISOString().split('T')[0];
+  const todayWorkouts = data.workoutLogs?.filter(log => log.date === today) || [];
+  
   const totalCalories = data.meals.reduce((sum, meal) => sum + meal.calories, 0);
   const totalProtein = data.meals.reduce((sum, meal) => sum + meal.protein, 0);
   const totalCarbs = data.meals.reduce((sum, meal) => sum + meal.carbs, 0);
@@ -124,6 +127,61 @@ export default function Dashboard({ data }: DashboardProps) {
           />
         </div>
       </motion.div>
+
+      {/* Bioimpedance Metrics */}
+      {(data.profile?.muscleMassPercentage || data.profile?.bodyFatPercentage || data.profile?.visceralFat) && (
+        <div className="grid grid-cols-3 gap-3">
+          {data.profile.muscleMassPercentage && (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-black/5 dark:border-white/5">
+              <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Músculo</p>
+              <p className="text-lg font-bold text-emerald-500">{data.profile.muscleMassPercentage}%</p>
+            </div>
+          )}
+          {data.profile.bodyFatPercentage && (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-black/5 dark:border-white/5">
+              <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Gordura</p>
+              <p className="text-lg font-bold text-rose-500">{data.profile.bodyFatPercentage}%</p>
+            </div>
+          )}
+          {data.profile.visceralFat && (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-black/5 dark:border-white/5">
+              <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Visceral</p>
+              <p className="text-lg font-bold text-amber-500">{data.profile.visceralFat}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Today's Workouts */}
+      {todayWorkouts.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-zinc-900 dark:bg-emerald-500 rounded-[2.5rem] p-8 text-white shadow-xl shadow-black/10 dark:shadow-emerald-500/20"
+        >
+          <div className="flex items-center gap-4 mb-6">
+            <div className="p-3 bg-white/10 rounded-2xl">
+              <Dumbbell className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold">Treinos de Hoje</h3>
+              <p className="text-white/60 text-sm">Você está mandando bem!</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {todayWorkouts.map(log => (
+              <div key={log.id} className="flex items-center justify-between p-4 bg-white/10 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 dark:text-white" />
+                  <span className="font-bold">{log.workoutName}</span>
+                </div>
+                <span className="text-xs font-medium opacity-60">{log.duration} min</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

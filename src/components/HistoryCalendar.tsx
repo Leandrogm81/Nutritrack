@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Download } from 'lucide-react';
-import { DailyData, UserProfile } from '../types';
+import { DailyData, UserProfile, WorkoutLog } from '../types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 interface HistoryCalendarProps {
-  history: Record<string, { meals: any[], waterMl: number }>;
+  history: Record<string, { meals: any[], waterMl: number, workoutLogs?: WorkoutLog[] }>;
   userProfile: UserProfile | null;
-  todayData: { meals: any[], waterMl: number };
+  todayData: { meals: any[], waterMl: number, workoutLogs?: WorkoutLog[] };
 }
 
 export default function HistoryCalendar({ history, userProfile, todayData }: HistoryCalendarProps) {
@@ -288,6 +288,20 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">Nenhuma refeição registrada.</p>
                 )}
               </div>
+
+              {selectedData.workoutLogs && selectedData.workoutLogs.length > 0 && (
+                <div>
+                  <h4 className="font-bold text-sm mb-2 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Treinos</h4>
+                  <div className="space-y-2">
+                    {selectedData.workoutLogs.map(log => (
+                      <div key={log.id} className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl">
+                        <span className="font-medium text-sm dark:text-white">{log.workoutName}</span>
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{log.duration} min</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-zinc-500 dark:text-zinc-400 text-center py-8">

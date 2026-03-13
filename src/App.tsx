@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { DailyData, Meal, PlannedMeal } from './types';
+import { DailyData, Meal, PlannedMeal, Workout, WorkoutLog, PlannedWorkout } from './types';
 import Dashboard from './components/Dashboard';
 import MealForm from './components/MealForm';
 import WaterTracker from './components/WaterTracker';
 import { 
   Download, Trash2, Utensils, Activity,
-  LayoutDashboard, 
+  LayoutDashboard, Dumbbell,
   TrendingUp, Calendar as CalendarIcon, User as UserIcon, Sparkles
 } from 'lucide-react';
 import CoachInsights from './components/CoachInsights';
@@ -17,9 +17,13 @@ import UserProfileForm from './components/UserProfileForm';
 import Analytics from './components/Analytics';
 import WeeklyPlanner from './components/WeeklyPlanner';
 import ThemeToggle from './components/ThemeToggle';
+import WorkoutGenerator from './components/WorkoutGenerator';
+import WorkoutPlanner from './components/WorkoutPlanner';
+import WorkoutTracker from './components/WorkoutTracker';
 import { motion, AnimatePresence } from 'motion/react';
 
-type Section = 'dashboard' | 'recipes' | 'chat' | 'history' | 'analytics' | 'planner' | 'profile';
+type Section = 'dashboard' | 'recipes' | 'chat' | 'workout' | 'history' | 'analytics' | 'planner' | 'profile';
+type WorkoutSubSection = 'tracker' | 'planner' | 'generator';
 
 const INITIAL_DATA: DailyData = {
   meals: [],
@@ -33,6 +37,9 @@ const INITIAL_DATA: DailyData = {
   },
   weightHistory: [],
   plannedMeals: [],
+  plannedWorkouts: [],
+  workouts: [],
+  workoutLogs: [],
   theme: 'light',
   lastActiveDate: new Date().toISOString().split('T')[0],
   history: {},
@@ -91,6 +98,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 export default function App() {
   const [data, setData] = useLocalStorage<DailyData>('nutritrack_data', INITIAL_DATA);
   const [activeSection, setActiveSection] = React.useState<Section>('dashboard');
+  const [workoutSubSection, setWorkoutSubSection] = React.useState<WorkoutSubSection>('tracker');
 
   // Ensure data structure is up to date (migration)
   useEffect(() => {
@@ -106,6 +114,7 @@ export default function App() {
         meals: Array.isArray(prev?.meals) ? prev.meals : [],
         weightHistory: Array.isArray(prev?.weightHistory) ? prev.weightHistory : [],
         plannedMeals: Array.isArray(prev?.plannedMeals) ? prev.plannedMeals : [],
+        plannedWorkouts: Array.isArray(prev?.plannedWorkouts) ? prev.plannedWorkouts : [],
       };
 
       let changed = false;
@@ -113,11 +122,13 @@ export default function App() {
         if (updated.lastActiveDate) {
           updated.history[updated.lastActiveDate] = {
             meals: [...(updated.meals || [])],
-            waterMl: updated.waterMl || 0
+            waterMl: updated.waterMl || 0,
+            workoutLogs: [...(updated.workoutLogs || [])]
           };
         }
         updated.meals = [];
         updated.waterMl = 0;
+        updated.workoutLogs = [];
         updated.lastActiveDate = today;
         changed = true;
       }
@@ -168,7 +179,14 @@ export default function App() {
       goals,
       weightHistory: [
         ...(Array.isArray(prev.weightHistory) ? prev.weightHistory : []),
-        { id: Math.random().toString(36).substring(2, 9), weight: profile.weight || 0, timestamp: Date.now() }
+        { 
+          id: Math.random().toString(36).substring(2, 9), 
+          weight: profile.weight || 0, 
+          muscleMassPercentage: profile.muscleMassPercentage,
+          bodyFatPercentage: profile.bodyFatPercentage,
+          visceralFat: profile.visceralFat,
+          timestamp: Date.now() 
+        }
       ]
     }));
   };
@@ -185,17 +203,55 @@ export default function App() {
   };
 
   const handleUpdatePlanner = (meals: PlannedMeal[]) => {
-    setData(prev => {
-      const mealsWithIds = meals.map(m => ({
+    setData(prev => ({
+      ...prev,
+      plannedMeals: meals.map(m => ({
         ...m,
         id: m.id || Math.random().toString(36).substring(2, 9)
-      }));
-      
-      return {
-        ...prev,
-        plannedMeals: mealsWithIds
-      };
-    });
+      }))
+    }));
+  };
+
+  const handleUpdateWorkoutPlanner = (planned: PlannedWorkout[]) => {
+    setData(prev => ({
+      ...prev,
+      plannedWorkouts: planned
+    }));
+  };
+
+  const handleImportWorkouts = (workouts: Workout[], planned: PlannedWorkout[]) => {
+    setData(prev => ({
+      ...prev,
+      workouts: [...prev.workouts, ...workouts],
+      plannedWorkouts: [...prev.plannedWorkouts, ...planned]
+    }));
+    setWorkoutSubSection('planner');
+  };
+
+  const handleImportData = (importedData: DailyData) => {
+    setData(importedData);
+  };
+
+  const handleSaveWorkout = (workout: Workout) => {
+    setData(prev => ({
+      ...prev,
+      workouts: [...(prev.workouts || []), workout]
+    }));
+    setActiveSection('workout');
+  };
+
+  const handleLogWorkout = (log: WorkoutLog) => {
+    setData(prev => ({
+      ...prev,
+      workoutLogs: [...(prev.workoutLogs || []), log]
+    }));
+  };
+
+  const handleDeleteWorkout = (id: string) => {
+    setData(prev => ({
+      ...prev,
+      workouts: prev.workouts.filter(w => w.id !== id)
+    }));
   };
 
 
@@ -236,7 +292,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 sm:px-6 pt-8 pb-32 space-y-8">
+      <main className="max-w-md mx-auto px-4 sm:px-6 pt-8 pb-[calc(8rem+env(safe-area-inset-bottom))] space-y-8">
         <AnimatePresence mode="wait">
           {activeSection === 'dashboard' && (
             <motion.div 
@@ -348,10 +404,105 @@ export default function App() {
               exit={{ opacity: 0, x: 20 }}
               className="space-y-8 pb-32 px-1"
             >
+              <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">IA Nutricionista</h2>
+              </div>
               <DietGenerator 
                 data={data} 
                 onUpdatePlanner={handleUpdatePlanner}
               />
+              
+              <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
+                <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight mb-6">IA Personal Trainer</h2>
+                <WorkoutGenerator 
+                  data={data} 
+                  onSaveWorkout={handleSaveWorkout} 
+                  onSaveWeeklyPlan={handleImportWorkouts}
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {activeSection === 'workout' && (
+            <motion.div 
+              key="workout"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-8 pb-32 px-1"
+            >
+              <div className="flex bg-white dark:bg-zinc-900 p-1 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
+                <button
+                  onClick={() => setWorkoutSubSection('tracker')}
+                  className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${workoutSubSection === 'tracker' ? 'bg-zinc-900 dark:bg-emerald-500 text-white shadow-lg' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600'}`}
+                >
+                  Treinar
+                </button>
+                <button
+                  onClick={() => setWorkoutSubSection('planner')}
+                  className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${workoutSubSection === 'planner' ? 'bg-zinc-900 dark:bg-emerald-500 text-white shadow-lg' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600'}`}
+                >
+                  Plano
+                </button>
+                <button
+                  onClick={() => setWorkoutSubSection('generator')}
+                  className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${workoutSubSection === 'generator' ? 'bg-zinc-900 dark:bg-emerald-500 text-white shadow-lg' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600'}`}
+                >
+                  IA
+                </button>
+              </div>
+
+              <AnimatePresence mode="wait">
+                {workoutSubSection === 'tracker' && (
+                  <motion.div
+                    key="tracker"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <WorkoutTracker 
+                      workouts={data.workouts || []} 
+                      onLogWorkout={handleLogWorkout}
+                      onDeleteWorkout={handleDeleteWorkout}
+                    />
+                  </motion.div>
+                )}
+                {workoutSubSection === 'planner' && (
+                  <motion.div
+                    key="planner"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <WorkoutPlanner 
+                      data={data}
+                      onUpdatePlanner={handleUpdateWorkoutPlanner}
+                      onLogWorkout={handleLogWorkout}
+                      onStartWorkout={(workout) => {
+                        // Logic to start workout from planner
+                        setWorkoutSubSection('tracker');
+                        // We need a way to tell WorkoutTracker to start this workout
+                        // For now, let's just navigate. WorkoutTracker shows the list.
+                      }}
+                      onImportWorkouts={handleImportWorkouts}
+                    />
+                  </motion.div>
+                )}
+                {workoutSubSection === 'generator' && (
+                  <motion.div
+                    key="generator"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <WorkoutGenerator 
+                      data={data} 
+                      onSaveWorkout={handleSaveWorkout}
+                      onSaveWeeklyPlan={handleImportWorkouts}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
@@ -367,7 +518,12 @@ export default function App() {
                 <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">Configurações</h2>
               </div>
               
-              <UserProfileForm profile={data.profile} onSave={handleSaveProfile} />
+              <UserProfileForm 
+                profile={data.profile} 
+                onSave={handleSaveProfile} 
+                fullData={data}
+                onImportData={handleImportData}
+              />
               
               <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
                 <HistoryCalendar history={data.history || {}} userProfile={data.profile || null} todayData={{ meals: data.meals, waterMl: data.waterMl }} />
@@ -378,7 +534,7 @@ export default function App() {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 sm:bottom-4 left-0 sm:left-4 right-0 sm:right-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border-t sm:border border-black/5 dark:border-white/5 px-4 py-3 z-50 rounded-none sm:rounded-[2rem] shadow-2xl shadow-black/5">
+      <nav className="fixed bottom-0 sm:bottom-4 left-0 sm:left-4 right-0 sm:right-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border-t sm:border border-black/5 dark:border-white/5 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 rounded-none sm:rounded-[2rem] shadow-2xl shadow-black/5">
         <div className="max-w-md mx-auto flex justify-between items-center">
           <NavButton 
             active={activeSection === 'dashboard'} 
@@ -402,7 +558,13 @@ export default function App() {
             active={activeSection === 'chat'} 
             onClick={() => setActiveSection('chat')}
             icon={<Sparkles className="w-5 h-5" />}
-            label="Dieta"
+            label="IA"
+          />
+          <NavButton 
+            active={activeSection === 'workout'} 
+            onClick={() => setActiveSection('workout')}
+            icon={<Dumbbell className="w-5 h-5" />}
+            label="Treino"
           />
           <NavButton 
             active={activeSection === 'profile'} 

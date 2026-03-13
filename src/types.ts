@@ -11,6 +11,9 @@ export interface Meal {
 export interface WeightEntry {
   id: string;
   weight: number;
+  muscleMassPercentage?: number;
+  bodyFatPercentage?: number;
+  visceralFat?: number;
   timestamp: number;
 }
 
@@ -34,6 +37,44 @@ export interface UserProfile {
     fats: number;
   };
   dietaryRestrictions?: string;
+  muscleMassPercentage?: number;
+  bodyFatPercentage?: number;
+  visceralFat?: number;
+}
+
+export interface Exercise {
+  id: string;
+  name: string;
+  sets: number;
+  reps: string;
+  weight?: number;
+  rest?: number; // in seconds
+  notes?: string;
+}
+
+export interface Workout {
+  id: string;
+  name: string;
+  description?: string;
+  exercises: Exercise[];
+  type: 'strength' | 'cardio' | 'flexibility' | 'other';
+  duration?: number; // estimated minutes
+}
+
+export interface WorkoutLog {
+  id: string;
+  workoutId: string;
+  workoutName: string;
+  date: string;
+  exercises: Exercise[]; // Actual performed sets/reps/weight
+  duration?: number;
+  mood?: 'great' | 'good' | 'tired' | 'bad';
+}
+
+export interface PlannedWorkout {
+  id: string;
+  workoutId: string;
+  day: string; // 'seg', 'ter', etc.
 }
 
 export interface DailyData {
@@ -49,7 +90,10 @@ export interface DailyData {
   profile?: UserProfile;
   weightHistory: WeightEntry[];
   plannedMeals: PlannedMeal[];
+  plannedWorkouts: PlannedWorkout[];
+  workouts: Workout[];
+  workoutLogs: WorkoutLog[];
   theme: 'light' | 'dark';
   lastActiveDate?: string;
-  history?: Record<string, { meals: Meal[], waterMl: number }>;
+  history?: Record<string, { meals: Meal[], waterMl: number, workoutLogs?: WorkoutLog[] }>;
 }

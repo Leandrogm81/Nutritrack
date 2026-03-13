@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, GenerateContentResponse, FunctionDeclaration } from "@google/genai";
-import { Meal, DailyData, UserProfile, PlannedMeal } from "../types";
+import { Meal, DailyData, UserProfile, PlannedMeal, Workout, Exercise, PlannedWorkout } from "../types";
 
 let aiClient: GoogleGenAI | null = null;
 
@@ -386,5 +386,240 @@ export const geminiService = {
     
     const meals = JSON.parse(text);
     return meals;
+  },
+
+  async parseWorkoutText(text: string): Promise<{ workouts: Workout[], plannedWorkouts: PlannedWorkout[] }> {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Analise o seguinte texto que contém um plano de treino e extraia os treinos e a programação semanal.
+      Texto: "${text}"
+      
+      Regras:
+      1. Identifique os treinos individuais (ex: Treino A, Treino B, Treino de Peito, etc.).
+      2. Para cada treino, extraia a lista de exercícios com séries, repetições e notas.
+      3. Identifique em quais dias da semana cada treino deve ser realizado ('seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom').
+      
+      Responda APENAS com um objeto JSON no seguinte formato:
+      {
+        "workouts": [
+          {
+            "name": "Nome do Treino",
+            "description": "Breve descrição",
+            "type": "strength",
+            "duration": 60,
+            "exercises": [
+              { "name": "Supino", "sets": 3, "reps": "12", "notes": "Carga moderada" }
+            ]
+          }
+        ],
+        "plannedWorkouts": [
+          { "workoutName": "Nome do Treino", "day": "seg" }
+        ]
+      }`,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    try {
+      const parsed = JSON.parse(response.text || "{}");
+      const workouts = (parsed.workouts || []).map((w: any) => ({
+        ...w,
+        id: Math.random().toString(36).substring(2, 9),
+        exercises: (w.exercises || []).map((e: any) => ({
+          ...e,
+          id: Math.random().toString(36).substring(2, 9)
+        }))
+      }));
+
+      const plannedWorkouts = (parsed.plannedWorkouts || []).map((pw: any) => {
+        const workout = workouts.find((w: any) => w.name === pw.workoutName);
+        return {
+          id: Math.random().toString(36).substring(2, 9),
+          workoutId: workout ? workout.id : '',
+          day: pw.day
+        };
+      }).filter((pw: any) => pw.workoutId);
+
+      return { workouts, plannedWorkouts };
+    } catch (e) {
+      throw new Error("Falha ao processar o texto do treino com a IA");
+    }
+  },
+
+  async generateWeeklyWorkoutPlan(currentData: DailyData, prompt: string): Promise<{ workouts: Workout[], plannedWorkouts: PlannedWorkout[] }> {
+    const ai = getAiClient();
+    const profile = currentData.profile;
+    
+    if (!profile) {
+      throw new Error("Perfil não preenchido. Preencha seu perfil antes de gerar um treino.");
+    }
+
+    const fullPrompt = `
+      Você é um Treinador de Elite (Personal Trainer).
+      Gere um plano de treino semanal completo baseado no pedido do usuário e no seu perfil físico.
+      
+      PEDIDO DO USUÁRIO: "${prompt}"
+      
+      DADOS DO PERFIL DO USUÁRIO:
+      - Nome: ${profile.name}
+      - Idade: ${profile.age} anos
+      - Peso: ${profile.weight} kg
+      - Altura: ${profile.height} cm
+      - Gênero: ${profile.gender === 'male' ? 'Masculino' : 'Feminino'}
+      - Nível de Atividade: ${profile.activityLevel}
+      - Objetivo: ${profile.goal === 'lose' ? 'Perder peso' : profile.goal === 'gain' ? 'Ganhar massa' : 'Manter peso'}
+      - Percentual de Gordura: ${profile.bodyFatPercentage || 'Não informado'}%
+      - Massa Muscular: ${profile.muscleMassPercentage || 'Não informado'}%
+      
+      REGRAS IMPORTANTES:
+      1. Se o usuário pedir um split (ex: ABC, ABCD, Full Body 3x), você DEVE criar treinos DIFERENTES para cada letra/dia.
+      2. Não misture todos os exercícios em um único treino se o usuário pediu uma divisão.
+      3. Defina claramente qual treino (pelo nome) deve ser feito em cada dia da semana ('seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom').
+      
+      Retorne APENAS um JSON no formato:
+      {
+        "workouts": [
+          {
+            "name": "Treino A - Peito e Tríceps",
+            "description": "Foco em empurrar",
+            "type": "strength",
+            "duration": 60,
+            "exercises": [
+              { "name": "Supino Reto", "sets": 4, "reps": "10-12", "notes": "Descanso de 60s" }
+            ]
+          }
+        ],
+        "plannedWorkouts": [
+          { "workoutName": "Treino A - Peito e Tríceps", "day": "seg" },
+          { "workoutName": "Treino B - Costas e Bíceps", "day": "ter" }
+        ]
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: fullPrompt,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    try {
+      const parsed = JSON.parse(response.text || "{}");
+      const workouts = (parsed.workouts || []).map((w: any) => ({
+        ...w,
+        id: Math.random().toString(36).substring(2, 9),
+        exercises: (w.exercises || []).map((e: any) => ({
+          ...e,
+          id: Math.random().toString(36).substring(2, 9)
+        }))
+      }));
+
+      const plannedWorkouts = (parsed.plannedWorkouts || []).map((pw: any) => {
+        const workout = workouts.find((w: any) => w.name === pw.workoutName);
+        return {
+          id: Math.random().toString(36).substring(2, 9),
+          workoutId: workout ? workout.id : '',
+          day: pw.day
+        };
+      }).filter((pw: any) => pw.workoutId);
+
+      return { workouts, plannedWorkouts };
+    } catch (e) {
+      throw new Error("Falha ao gerar plano de treino");
+    }
+  },
+
+  async chatWithTrainer(message: string, history: { role: 'user' | 'model', parts: { text: string }[] }[], currentData: DailyData): Promise<AsyncGenerator<GenerateContentResponse>> {
+    const ai = getAiClient();
+    const profile = currentData.profile;
+    const profileInfo = profile ? `
+      DADOS DO PERFIL DO USUÁRIO:
+      - Nome: ${profile.name}
+      - Idade: ${profile.age} anos
+      - Peso: ${profile.weight} kg
+      - Altura: ${profile.height} cm
+      - Gênero: ${profile.gender === 'male' ? 'Masculino' : 'Feminino'}
+      - Nível de Atividade: ${profile.activityLevel}
+      - Objetivo: ${profile.goal === 'lose' ? 'Perder peso' : profile.goal === 'gain' ? 'Ganhar massa' : 'Manter peso'}
+    ` : 'Perfil não preenchido.';
+
+    const workoutPlannerFunction: FunctionDeclaration = {
+      name: "updateWorkoutPlanner",
+      description: "Atualiza o planejador de treinos semanal com novos treinos sugeridos.",
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          workouts: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                description: { type: Type.STRING },
+                type: { type: Type.STRING, enum: ['strength', 'cardio', 'flexibility', 'other'] },
+                duration: { type: Type.NUMBER },
+                exercises: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      name: { type: Type.STRING },
+                      sets: { type: Type.NUMBER },
+                      reps: { type: Type.STRING },
+                      notes: { type: Type.STRING }
+                    },
+                    required: ["name", "sets", "reps"]
+                  }
+                }
+              },
+              required: ["name", "exercises", "type"]
+            }
+          },
+          plannedWorkouts: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                workoutName: { type: Type.STRING },
+                day: { type: Type.STRING, description: "seg, ter, qua, qui, sex, sab, dom" }
+              },
+              required: ["workoutName", "day"]
+            }
+          }
+        },
+        required: ["workouts", "plannedWorkouts"]
+      }
+    };
+
+    const context = `
+      Você é o Treinador Digital do NutriTrack, um especialista em musculação e performance.
+      
+      Suas capacidades:
+      1. Montar PLANOS DE TREINO personalizados (ABC, ABCD, etc.).
+      2. Sugerir exercícios e técnicas avançadas.
+      3. ATUALIZAR O PLANEJADOR DE TREINOS do usuário usando a ferramenta 'updateWorkoutPlanner'.
+      
+      ${profileInfo}
+      
+      Diretrizes:
+      - OBRIGATÓRIO: Use os dados do perfil para montar treinos adequados.
+      - Se o usuário pedir um plano semanal, use a ferramenta 'updateWorkoutPlanner'.
+      - Explique a lógica do treino antes de salvá-lo.
+      - Após salvar, informe que o plano está na aba "Plano" dentro da seção de Treino.
+    `;
+
+    const chat = ai.chats.create({
+      model: "gemini-3-flash-preview",
+      config: {
+        systemInstruction: context,
+        tools: [{ functionDeclarations: [workoutPlannerFunction] }]
+      },
+      history: history,
+    });
+
+    return chat.sendMessageStream({ message });
   }
 };

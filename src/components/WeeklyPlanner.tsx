@@ -28,7 +28,12 @@ const MEAL_TYPES = [
 ];
 
 export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: WeeklyPlannerProps) {
-  const [selectedDay, setSelectedDay] = useState('seg');
+  const getCurrentDayId = () => {
+    const days = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+    return days[new Date().getDay()];
+  };
+
+  const [selectedDay, setSelectedDay] = useState(getCurrentDayId());
   const [isAdding, setIsAdding] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isPastingDiet, setIsPastingDiet] = useState(false);

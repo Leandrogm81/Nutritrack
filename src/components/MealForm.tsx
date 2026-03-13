@@ -106,13 +106,30 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
     });
   };
 
+  const [baseNutrients, setBaseNutrients] = useState<Omit<Meal, 'id' | 'timestamp'> | null>(null);
+  const [portionAmount, setPortionAmount] = useState('100');
+
   const fillManualForm = (result: Omit<Meal, 'id' | 'timestamp'>) => {
-    setName(result.name);
-    setCalories(result.calories.toString());
-    setProtein(result.protein.toString());
-    setCarbs(result.carbs.toString());
-    setFats(result.fats.toString());
+    setBaseNutrients(result);
+    setPortionAmount('100');
+    updateMacros(result, 100);
     setIsAiMode(false);
+  };
+
+  const updateMacros = (base: Omit<Meal, 'id' | 'timestamp'>, amount: number) => {
+    const factor = amount / 100;
+    setName(base.name);
+    setCalories(Math.round(base.calories * factor).toString());
+    setProtein(Math.round(base.protein * factor).toString());
+    setCarbs(Math.round(base.carbs * factor).toString());
+    setFats(Math.round(base.fats * factor).toString());
+  };
+
+  const handlePortionChange = (amount: string) => {
+    setPortionAmount(amount);
+    if (baseNutrients) {
+      updateMacros(baseNutrients, Number(amount) || 0);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -145,7 +162,7 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-28 right-6 w-14 h-14 bg-emerald-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-emerald-600 transition-colors z-40 shadow-emerald-500/20"
+        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-6 w-14 h-14 bg-emerald-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-emerald-600 transition-colors z-40 shadow-emerald-500/20"
       >
         <Plus className="w-8 h-8" />
       </button>
@@ -167,7 +184,7 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
               exit={{ y: '100%' }}
               className="relative bg-white dark:bg-zinc-900 w-full max-w-md rounded-t-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl max-h-[94vh] overflow-y-auto no-scrollbar"
             >
-              <div className="flex justify-between items-center mb-6 sm:mb-8">
+              <div className="flex justify-between items-center mb-6 sm:mb-8 pb-[env(safe-area-inset-bottom)]">
                 <div className="flex items-center gap-3">
                   <h3 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">
                     {isAiMode ? 'Registro Inteligente' : 'Confirmar Dados'}
@@ -319,6 +336,18 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
                       required
                     />
                   </div>
+
+                  {baseNutrients && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-2">Porção Consumida (g)</label>
+                      <input
+                        type="number"
+                        value={portionAmount}
+                        onChange={(e) => handlePortionChange(e.target.value)}
+                        className="w-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-2xl px-6 py-4 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all dark:text-white font-bold text-emerald-700 dark:text-emerald-400"
+                      />
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>

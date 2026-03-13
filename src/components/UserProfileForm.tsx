@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { UserProfile, DailyData } from '../types';
-import { User, Scale, Ruler, Calendar, Activity, Target, Save, CheckCircle2, Utensils } from 'lucide-react';
+import { User, Scale, Ruler, Calendar, Activity, Target, Save, CheckCircle2, Utensils, Download, Upload } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface UserProfileFormProps {
   profile?: UserProfile;
   onSave: (profile: UserProfile, goals: DailyData['goals']) => void;
+  fullData: DailyData;
+  onImportData: (data: DailyData) => void;
 }
 
-export default function UserProfileForm({ profile, onSave }: UserProfileFormProps) {
+export default function UserProfileForm({ profile, onSave, fullData, onImportData }: UserProfileFormProps) {
   const [formData, setFormData] = useState<UserProfile>(profile || {
     name: '',
     age: 30,
@@ -23,6 +25,7 @@ export default function UserProfileForm({ profile, onSave }: UserProfileFormProp
   });
 
   const [saved, setSaved] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const calculateGoals = (p: UserProfile) => {
     const weight = p.weight || 70;
@@ -114,6 +117,42 @@ export default function UserProfileForm({ profile, onSave }: UserProfileFormProp
     setTimeout(() => setSaved(false), 3000);
   };
 
+  const handleExport = () => {
+    const dataStr = JSON.stringify(fullData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `nutritrack_backup_${new Date().toISOString().split('T')[0]}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedData = JSON.parse(e.target?.result as string);
+        // Basic validation
+        if (importedData && typeof importedData === 'object' && importedData.goals) {
+          if (window.confirm('Isso irá substituir todos os seus dados atuais. Deseja continuar?')) {
+            onImportData(importedData);
+            alert('Dados importados com sucesso!');
+          }
+        } else {
+          alert('Arquivo de backup inválido.');
+        }
+      } catch (err) {
+        alert('Erro ao ler o arquivo de backup.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="space-y-8 pb-32">
       <header>
@@ -176,6 +215,51 @@ export default function UserProfileForm({ profile, onSave }: UserProfileFormProp
                 className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all dark:text-white"
                 required
               />
+            </div>
+          </div>
+
+          {/* Bioimpedance Section */}
+          <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800/50">
+            <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-6">Dados de Bioimpedância (Opcional)</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+                  % Músculo
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.muscleMassPercentage || ''}
+                  onChange={e => setFormData({ ...formData, muscleMassPercentage: parseFloat(e.target.value) || undefined })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all dark:text-white"
+                  placeholder="Ex: 35.5"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+                  % Gordura
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.bodyFatPercentage || ''}
+                  onChange={e => setFormData({ ...formData, bodyFatPercentage: parseFloat(e.target.value) || undefined })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all dark:text-white"
+                  placeholder="Ex: 18.2"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+                  Gordura Visceral
+                </label>
+                <input
+                  type="number"
+                  value={formData.visceralFat || ''}
+                  onChange={e => setFormData({ ...formData, visceralFat: parseInt(e.target.value) || undefined })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all dark:text-white"
+                  placeholder="Ex: 5"
+                />
+              </div>
             </div>
           </div>
 
@@ -333,6 +417,82 @@ export default function UserProfileForm({ profile, onSave }: UserProfileFormProp
             </>
           )}
         </button>
+
+        <div className="pt-12 border-t border-zinc-100 dark:border-zinc-800 mt-12 space-y-8">
+          <div>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Backup de Dados</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+              Exporte seus dados para um arquivo para salvá-los em outro lugar ou importe um backup anterior para recuperar seu histórico.
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={handleExport}
+                className="flex items-center justify-center gap-3 py-4 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl font-bold border border-emerald-100 dark:border-emerald-500/20 hover:bg-emerald-100 transition-all"
+              >
+                <Download className="w-5 h-5" />
+                Exportar Backup
+              </button>
+              
+              <label className="flex items-center justify-center gap-3 py-4 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-300 rounded-2xl font-bold border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 cursor-pointer transition-all">
+                <Upload className="w-5 h-5" />
+                Importar Backup
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  onChange={handleImport} 
+                  className="hidden" 
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Zona de Perigo</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+              Se o aplicativo estiver apresentando erros visuais ou travamentos, você pode resetar todos os dados locais. Isso apagará seu histórico e perfil permanentemente.
+            </p>
+            
+            {!showResetConfirm ? (
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(true)}
+                className="w-full py-4 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl font-bold border border-rose-100 dark:border-rose-500/20 hover:bg-rose-100 transition-all"
+              >
+                Limpar Todos os Dados e Resetar
+              </button>
+            ) : (
+              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="p-4 bg-rose-50 dark:bg-rose-500/10 rounded-2xl border border-rose-100 dark:border-rose-500/20">
+                  <p className="text-sm font-bold text-rose-600 dark:text-rose-400 text-center">
+                    VOCÊ TEM CERTEZA? <br/>
+                    <span className="font-normal opacity-80">Esta ação não pode ser desfeita.</span>
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('nutritrack_data');
+                      window.location.reload();
+                    }}
+                    className="py-4 bg-rose-600 text-white rounded-2xl font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-600/20"
+                  >
+                    Sim, Apagar Tudo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfirm(false)}
+                    className="py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-2xl font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </form>
     </div>
   );
