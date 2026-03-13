@@ -7,9 +7,8 @@ import WaterTracker from './components/WaterTracker';
 import { 
   Download, Trash2, Utensils, Activity,
   LayoutDashboard, Dumbbell,
-  TrendingUp, Calendar as CalendarIcon, User as UserIcon, Sparkles
+  TrendingUp, Calendar as CalendarIcon, User as UserIcon
 } from 'lucide-react';
-import CoachInsights from './components/CoachInsights';
 import RecipeSuggestions from './components/RecipeSuggestions';
 import DietGenerator from './components/DietGenerator';
 import HistoryCalendar from './components/HistoryCalendar';
@@ -22,7 +21,7 @@ import WorkoutPlanner from './components/WorkoutPlanner';
 import WorkoutTracker from './components/WorkoutTracker';
 import { motion, AnimatePresence } from 'motion/react';
 
-type Section = 'dashboard' | 'recipes' | 'chat' | 'workout' | 'history' | 'analytics' | 'planner' | 'profile';
+type Section = 'dashboard' | 'recipes' | 'workout' | 'history' | 'analytics' | 'planner' | 'profile';
 type WorkoutSubSection = 'tracker' | 'planner' | 'generator';
 
 const INITIAL_DATA: DailyData = {
@@ -304,7 +303,6 @@ export default function App() {
             >
               <Dashboard data={data} />
               <WaterTracker currentMl={data.waterMl} onAddWater={handleAddWater} />
-              <CoachInsights data={data} />
               
               <section className="space-y-4">
                 <div className="flex items-center gap-3 mb-2">
@@ -390,34 +388,14 @@ export default function App() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="pb-32"
+              className="pb-32 space-y-8"
             >
               <RecipeSuggestions data={data} />
-            </motion.div>
-          )}
-
-          {activeSection === 'chat' && (
-            <motion.div 
-              key="chat"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="space-y-8 pb-32 px-1"
-            >
-              <div className="flex justify-between items-center">
-                <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">IA Nutricionista</h2>
-              </div>
-              <DietGenerator 
-                data={data} 
-                onUpdatePlanner={handleUpdatePlanner}
-              />
-              
               <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
-                <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight mb-6">IA Personal Trainer</h2>
-                <WorkoutGenerator 
+                <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight mb-6">Gerador de Dieta</h2>
+                <DietGenerator 
                   data={data} 
-                  onSaveWorkout={handleSaveWorkout} 
-                  onSaveWeeklyPlan={handleImportWorkouts}
+                  onUpdatePlanner={handleUpdatePlanner}
                 />
               </div>
             </motion.div>
@@ -555,10 +533,10 @@ export default function App() {
             label="Plano"
           />
           <NavButton 
-            active={activeSection === 'chat'} 
-            onClick={() => setActiveSection('chat')}
-            icon={<Sparkles className="w-5 h-5" />}
-            label="IA"
+            active={activeSection === 'recipes'} 
+            onClick={() => setActiveSection('recipes')}
+            icon={<Utensils className="w-5 h-5" />}
+            label="Receitas"
           />
           <NavButton 
             active={activeSection === 'workout'} 

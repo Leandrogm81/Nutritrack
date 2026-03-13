@@ -47,7 +47,7 @@ export const geminiService = {
     }
   },
 
-  async analyzeMealImage(base64Image: string, mimeType: string): Promise<Omit<Meal, 'id' | 'timestamp'>> {
+  async analyzeImage(base64Image: string, mimeType: string): Promise<Omit<Meal, 'id' | 'timestamp'>> {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -59,7 +59,10 @@ export const geminiService = {
           }
         },
         {
-          text: "Analise esta imagem de comida e estime os valores nutricionais (calorias, proteínas, carboidratos e gorduras). Responda APENAS com o JSON no formato: { \"name\": string, \"calories\": number, \"protein\": number, \"carbs\": number, \"fats\": number }"
+          text: `Analise esta imagem. Identifique se é um prato de comida, um rótulo nutricional ou um código de barras. 
+          Se for um prato ou rótulo, extraia ou estime os valores nutricionais (calorias, proteínas, carboidratos e gorduras).
+          Se for um código de barras, tente ler o número e me dê os dados nutricionais.
+          Responda APENAS com o JSON no formato: { "name": string, "calories": number, "protein": number, "carbs": number, "fats": number }`
         }
       ],
       config: {
@@ -71,6 +74,37 @@ export const geminiService = {
       return JSON.parse(response.text || "{}");
     } catch (e) {
       throw new Error("Falha ao analisar imagem com IA");
+    }
+  },
+
+  async analyzeGymEquipment(base64Image: string, mimeType: string, currentWorkout: string): Promise<{ name: string, description: string, canSubstitute: boolean, substitutionReason: string }> {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
+        {
+          inlineData: {
+            data: base64Image,
+            mimeType: mimeType
+          }
+        },
+        {
+          text: `Analise esta imagem de um equipamento de academia. 
+          1. Identifique o nome do equipamento.
+          2. Verifique se ele pode ser usado como substituto para o exercício atual: "${currentWorkout}".
+          3. Dê uma breve explicação.
+          Responda APENAS com o JSON no formato: { "name": string, "description": string, "canSubstitute": boolean, "substitutionReason": string }`
+        }
+      ],
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    try {
+      return JSON.parse(response.text || "{}");
+    } catch (e) {
+      throw new Error("Falha ao analisar equipamento com IA");
     }
   },
 
