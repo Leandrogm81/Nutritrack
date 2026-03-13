@@ -448,6 +448,7 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
         {icon}
       </motion.div>
       <motion.span 
+        translate="no"
         animate={{ 
           opacity: active ? 1 : 0.5,
           scale: active ? 1.1 : 1,
