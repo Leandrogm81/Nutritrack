@@ -25,8 +25,12 @@ export default function UserProfileForm({ profile, onSave }: UserProfileFormProp
   const [saved, setSaved] = useState(false);
 
   const calculateGoals = (p: UserProfile) => {
+    const weight = p.weight || 70;
+    const height = p.height || 170;
+    const age = p.age || 30;
+
     // Mifflin-St Jeor Equation
-    let bmr = (10 * p.weight) + (6.25 * p.height) - (5 * p.age);
+    let bmr = (10 * weight) + (6.25 * height) - (5 * age);
     bmr = p.gender === 'male' ? bmr + 5 : bmr - 161;
 
     const activityMultipliers = {
@@ -37,12 +41,13 @@ export default function UserProfileForm({ profile, onSave }: UserProfileFormProp
       very_active: 1.9
     };
 
-    let tdee = bmr * activityMultipliers[p.activityLevel];
+    const multiplier = activityMultipliers[p.activityLevel] || 1.2;
+    let tdee = bmr * multiplier;
 
     if (p.goal === 'lose') tdee -= 500;
     if (p.goal === 'gain') tdee += 500;
 
-    const calories = Math.round(tdee);
+    const calories = Math.max(1200, Math.round(tdee));
     
     // Macros
     let protein = 0;
@@ -50,9 +55,9 @@ export default function UserProfileForm({ profile, onSave }: UserProfileFormProp
     let carbs = 0;
 
     if (p.dietType === 'custom' && p.customMacros) {
-      protein = p.customMacros.protein;
-      carbs = p.customMacros.carbs;
-      fats = p.customMacros.fats;
+      protein = p.customMacros.protein || 0;
+      carbs = p.customMacros.carbs || 0;
+      fats = p.customMacros.fats || 0;
     } else {
       // Default: Balanced
       let proteinRatio = 0.3;
@@ -79,18 +84,32 @@ export default function UserProfileForm({ profile, onSave }: UserProfileFormProp
     }
 
     return {
-      calories,
-      protein,
-      carbs,
-      fats,
-      water: Math.round(p.weight * 35) // 35ml per kg
+      calories: isNaN(calories) ? 2000 : calories,
+      protein: isNaN(protein) ? 150 : protein,
+      carbs: isNaN(carbs) ? 250 : carbs,
+      fats: isNaN(fats) ? 65 : fats,
+      water: isNaN(weight) ? 2500 : Math.round(weight * 35)
     };
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const goals = calculateGoals(formData);
-    onSave(formData, goals);
+    
+    // Ensure numeric values are valid
+    const cleanData = {
+      ...formData,
+      age: isNaN(formData.age) ? 30 : formData.age,
+      weight: isNaN(formData.weight) ? 70 : formData.weight,
+      height: isNaN(formData.height) ? 170 : formData.height,
+      customMacros: formData.customMacros ? {
+        protein: isNaN(formData.customMacros.protein) ? 0 : formData.customMacros.protein,
+        carbs: isNaN(formData.customMacros.carbs) ? 0 : formData.customMacros.carbs,
+        fats: isNaN(formData.customMacros.fats) ? 0 : formData.customMacros.fats,
+      } : undefined
+    };
+
+    const goals = calculateGoals(cleanData);
+    onSave(cleanData, goals);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };

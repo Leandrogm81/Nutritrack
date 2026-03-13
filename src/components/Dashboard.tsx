@@ -13,8 +13,8 @@ export default function Dashboard({ data }: DashboardProps) {
   const totalCarbs = data.meals.reduce((sum, meal) => sum + meal.carbs, 0);
   const totalFats = data.meals.reduce((sum, meal) => sum + meal.fats, 0);
 
-  const calPercentage = Math.min((totalCalories / data.goals.calories) * 100, 100);
-  const waterPercentage = Math.min((data.waterMl / data.goals.water) * 100, 100);
+  const calPercentage = data.goals.calories > 0 ? Math.min((totalCalories / data.goals.calories) * 100, 100) : 0;
+  const waterPercentage = data.goals.water > 0 ? Math.min((data.waterMl / data.goals.water) * 100, 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -59,11 +59,12 @@ export default function Dashboard({ data }: DashboardProps) {
       {/* Macros Grid */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Proteína', value: totalProtein, goal: data.goals.protein, color: 'bg-blue-500', textColor: 'text-blue-500' },
-          { label: 'Carbos', value: totalCarbs, goal: data.goals.carbs, color: 'bg-amber-500', textColor: 'text-amber-500' },
-          { label: 'Gorduras', value: totalFats, goal: data.goals.fats, color: 'bg-rose-500', textColor: 'text-rose-500' },
+          { label: 'Proteína', value: totalProtein, goal: data.goals.protein || 1, color: 'bg-blue-500', textColor: 'text-blue-500' },
+          { label: 'Carbos', value: totalCarbs, goal: data.goals.carbs || 1, color: 'bg-amber-500', textColor: 'text-amber-500' },
+          { label: 'Gorduras', value: totalFats, goal: data.goals.fats || 1, color: 'bg-rose-500', textColor: 'text-rose-500' },
         ].map((macro) => {
-          const percentage = Math.min((macro.value / macro.goal) * 100, 100);
+          const goal = macro.goal || 1;
+          const percentage = Math.min((macro.value / goal) * 100, 100);
           return (
             <motion.div 
               key={macro.label}
@@ -73,7 +74,7 @@ export default function Dashboard({ data }: DashboardProps) {
             >
               <div className="flex justify-between items-center mb-2">
                 <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">{macro.label}</span>
-                <span className={`text-[10px] font-bold ${macro.textColor}`}>{Math.round((macro.value / macro.goal) * 100)}%</span>
+                <span className={`text-[10px] font-bold ${macro.textColor}`}>{Math.round((macro.value / goal) * 100)}%</span>
               </div>
               
               <div className="mb-3">

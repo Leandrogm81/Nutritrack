@@ -38,6 +38,56 @@ const INITIAL_DATA: DailyData = {
   history: {},
 };
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6 bg-zinc-50 dark:bg-zinc-950">
+          <div className="max-w-md w-full bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-2xl text-center space-y-6 border border-black/5 dark:border-white/5">
+            <div className="w-20 h-20 bg-rose-100 dark:bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+              <Activity className="w-10 h-10" />
+            </div>
+            <h1 className="text-2xl font-bold dark:text-white">Ops! Algo deu errado.</h1>
+            <p className="text-zinc-500 dark:text-zinc-400">
+              Ocorreu um erro inesperado. Tente recarregar a página ou limpar os dados.
+            </p>
+            <button 
+              onClick={() => {
+                localStorage.removeItem('nutritrack_data');
+                window.location.reload();
+              }}
+              className="w-full py-4 bg-zinc-900 dark:bg-emerald-500 text-white rounded-2xl font-bold hover:scale-105 transition-all"
+            >
+              Resetar Aplicativo
+            </button>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-2xl font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+            >
+              Recarregar Página
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [data, setData] = useLocalStorage<DailyData>('nutritrack_data', INITIAL_DATA);
   const [activeSection, setActiveSection] = React.useState<Section>('dashboard');
@@ -50,8 +100,8 @@ export default function App() {
       let updated = { ...prev };
       let changed = false;
 
-      if (!updated.weightHistory) { updated.weightHistory = []; changed = true; }
-      if (!updated.plannedMeals) { updated.plannedMeals = []; changed = true; }
+      if (!Array.isArray(updated.weightHistory)) { updated.weightHistory = []; changed = true; }
+      if (!Array.isArray(updated.plannedMeals)) { updated.plannedMeals = []; changed = true; }
       if (updated.theme === undefined) { updated.theme = 'light'; changed = true; }
       if (!updated.history) { updated.history = {}; changed = true; }
       if (!updated.lastActiveDate) { updated.lastActiveDate = today; changed = true; }
@@ -61,8 +111,8 @@ export default function App() {
         // Save yesterday's data to history
         if (updated.lastActiveDate) {
           updated.history[updated.lastActiveDate] = {
-            meals: [...updated.meals],
-            waterMl: updated.waterMl
+            meals: [...(updated.meals || [])],
+            waterMl: updated.waterMl || 0
           };
         }
         
@@ -115,8 +165,8 @@ export default function App() {
       profile,
       goals,
       weightHistory: [
-        ...prev.weightHistory,
-        { id: Math.random().toString(36).substring(2, 9), weight: profile.weight, timestamp: Date.now() }
+        ...(Array.isArray(prev.weightHistory) ? prev.weightHistory : []),
+        { id: Math.random().toString(36).substring(2, 9), weight: profile.weight || 0, timestamp: Date.now() }
       ]
     }));
   };
@@ -167,7 +217,8 @@ export default function App() {
 
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 pb-32">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 pb-32 transition-colors">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-zinc-50/80 backdrop-blur-md border-b border-black/5 px-4 sm:px-6 py-4">
         <div className="max-w-md mx-auto flex justify-between items-center">
@@ -365,6 +416,7 @@ export default function App() {
         <MealForm onAddMeal={handleAddMeal} plannedMeals={data.plannedMeals} />
       )}
     </div>
+    </ErrorBoundary>
   );
 }
 
