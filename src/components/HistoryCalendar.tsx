@@ -47,12 +47,12 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
     const isToday = new Date().toISOString().split('T')[0] === dateStr;
     const data = isToday ? todayData : history[dateStr];
-    const hasData = !!data && (data.meals.length > 0 || data.waterMl > 0);
+    const hasData = !!data && Array.isArray(data.meals) && (data.meals.length > 0 || (data.waterMl || 0) > 0);
     const isSelected = selectedDate === dateStr;
 
     let statusColor = 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400';
-    if (hasData) {
-      const totalCals = data.meals.reduce((sum, m) => sum + m.calories, 0);
+    if (hasData && data) {
+      const totalCals = (data.meals || []).reduce((sum, m) => sum + (m.calories || 0), 0);
       let goal = 2000;
       if (userProfile && userProfile.goal === 'lose') goal = 1800;
       if (userProfile && userProfile.goal === 'gain') goal = 2500;
@@ -250,32 +250,32 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl">
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Calorias</p>
                   <p className="font-bold text-lg dark:text-white">
-                    {selectedData.meals.reduce((sum, m) => sum + m.calories, 0)} kcal
+                    {(selectedData.meals || []).reduce((sum, m) => sum + (m.calories || 0), 0)} kcal
                   </p>
                 </div>
                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl">
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Proteínas</p>
                   <p className="font-bold text-lg dark:text-white">
-                    {selectedData.meals.reduce((sum, m) => sum + m.protein, 0)}g
+                    {(selectedData.meals || []).reduce((sum, m) => sum + (m.protein || 0), 0)}g
                   </p>
                 </div>
                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl">
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Carboidratos</p>
                   <p className="font-bold text-lg dark:text-white">
-                    {selectedData.meals.reduce((sum, m) => sum + m.carbs, 0)}g
+                    {(selectedData.meals || []).reduce((sum, m) => sum + (m.carbs || 0), 0)}g
                   </p>
                 </div>
                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl">
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Gorduras</p>
                   <p className="font-bold text-lg dark:text-white">
-                    {selectedData.meals.reduce((sum, m) => sum + m.fats, 0)}g
+                    {(selectedData.meals || []).reduce((sum, m) => sum + (m.fats || 0), 0)}g
                   </p>
                 </div>
               </div>
               
               <div>
                 <h4 className="font-bold text-sm mb-2 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Refeições</h4>
-                {selectedData.meals.length > 0 ? (
+                {Array.isArray(selectedData.meals) && selectedData.meals.length > 0 ? (
                   <div className="space-y-2">
                     {selectedData.meals.map(meal => (
                       <div key={meal.id} className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl">

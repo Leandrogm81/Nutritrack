@@ -97,33 +97,35 @@ export default function App() {
     const today = new Date().toISOString().split('T')[0];
     
     setData(prev => {
-      let updated = { ...prev };
+      // Deep merge with INITIAL_DATA to ensure all keys exist
+      const updated = { 
+        ...INITIAL_DATA,
+        ...prev,
+        goals: { ...INITIAL_DATA.goals, ...(prev?.goals || {}) },
+        history: prev?.history || {},
+        meals: Array.isArray(prev?.meals) ? prev.meals : [],
+        weightHistory: Array.isArray(prev?.weightHistory) ? prev.weightHistory : [],
+        plannedMeals: Array.isArray(prev?.plannedMeals) ? prev.plannedMeals : [],
+      };
+
       let changed = false;
-
-      if (!Array.isArray(updated.weightHistory)) { updated.weightHistory = []; changed = true; }
-      if (!Array.isArray(updated.plannedMeals)) { updated.plannedMeals = []; changed = true; }
-      if (updated.theme === undefined) { updated.theme = 'light'; changed = true; }
-      if (!updated.history) { updated.history = {}; changed = true; }
-      if (!updated.lastActiveDate) { updated.lastActiveDate = today; changed = true; }
-
-      // Daily reset logic
       if (updated.lastActiveDate !== today) {
-        // Save yesterday's data to history
         if (updated.lastActiveDate) {
           updated.history[updated.lastActiveDate] = {
             meals: [...(updated.meals || [])],
             waterMl: updated.waterMl || 0
           };
         }
-        
-        // Reset today's data
         updated.meals = [];
         updated.waterMl = 0;
         updated.lastActiveDate = today;
         changed = true;
       }
 
-      return changed ? updated : prev;
+      // Check if we actually changed anything to avoid infinite loops
+      const hasAllKeys = prev && prev.goals && prev.meals && prev.weightHistory && prev.plannedMeals;
+      if (!hasAllKeys || changed) return updated;
+      return prev;
     });
   }, []);
 
