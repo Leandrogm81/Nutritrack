@@ -18,7 +18,7 @@ export const geminiService = {
   async parseMealDescription(description: string): Promise<Omit<Meal, 'id' | 'timestamp'>> {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Analise a seguinte descrição de refeição e extraia os valores nutricionais estimados (calorias, proteínas, carboidratos e gorduras). 
       Descrição: "${description}"
       
@@ -50,7 +50,7 @@ export const geminiService = {
   async analyzeImage(base64Image: string, mimeType: string): Promise<Omit<Meal, 'id' | 'timestamp'>> {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: [
         {
           inlineData: {
@@ -80,7 +80,7 @@ export const geminiService = {
   async analyzeGymEquipment(base64Image: string, mimeType: string, currentWorkout: string): Promise<{ name: string, description: string, canSubstitute: boolean, substitutionReason: string }> {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: [
         {
           inlineData: {
@@ -111,7 +111,7 @@ export const geminiService = {
   async parseDietText(text: string): Promise<PlannedMeal[]> {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Analise o seguinte texto que contém um plano de dieta e extraia as refeições planejadas para a semana.
       Texto: "${text}"
       
@@ -175,7 +175,7 @@ export const geminiService = {
     ` : '';
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Atue como um coach nutricional pessoal. ${profileContext}
       Dados de consumo de hoje:
       - Calorias consumidas: ${totalCalories} / ${data.goals.calories}
@@ -198,7 +198,7 @@ export const geminiService = {
     ` : '';
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Sugira 2 receitas rápidas e saudáveis. ${profileContext}
       Macros restantes para o dia:
       - Calorias: ${remaining.calories} kcal
@@ -222,7 +222,7 @@ export const geminiService = {
   async scanNutritionalLabel(base64Image: string, mimeType: string): Promise<Omit<Meal, 'id' | 'timestamp'>> {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: [
         {
           inlineData: {
@@ -326,7 +326,7 @@ export const geminiService = {
     `;
 
     const chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       config: {
         systemInstruction: context,
         tools: [{ functionDeclarations: [plannerFunction] }]
@@ -392,7 +392,7 @@ export const geminiService = {
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -425,7 +425,7 @@ export const geminiService = {
   async parseWorkoutText(text: string): Promise<{ workouts: Workout[], plannedWorkouts: PlannedWorkout[] }> {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Analise o seguinte texto que contém um plano de treino e extraia os treinos e a programação semanal.
       Texto: "${text}"
       
@@ -533,7 +533,7 @@ export const geminiService = {
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: fullPrompt,
       config: {
         responseMimeType: "application/json"
@@ -646,7 +646,7 @@ export const geminiService = {
     `;
 
     const chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       config: {
         systemInstruction: context,
         tools: [{ functionDeclarations: [workoutPlannerFunction] }]
