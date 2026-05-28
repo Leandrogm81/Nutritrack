@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Download } from 'lucide-react';
-import { DailyData, UserProfile, WorkoutLog } from '../types';
+import { DailyHistoryEntry, UserProfile } from '../types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 interface HistoryCalendarProps {
-  history: Record<string, { meals: any[], waterMl: number, workoutLogs?: WorkoutLog[] }>;
+  history: Record<string, DailyHistoryEntry>;
   userProfile: UserProfile | null;
-  todayData: { meals: any[], waterMl: number, workoutLogs?: WorkoutLog[] };
+  todayData: DailyHistoryEntry;
 }
 
 export default function HistoryCalendar({ history, userProfile, todayData }: HistoryCalendarProps) {
@@ -47,7 +47,13 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
     const isToday = new Date().toISOString().split('T')[0] === dateStr;
     const data = isToday ? todayData : history[dateStr];
-    const hasData = !!data && Array.isArray(data.meals) && (data.meals.length > 0 || (data.waterMl || 0) > 0);
+    const hasData = !!data && Array.isArray(data.meals) && (
+      data.meals.length > 0 ||
+      (data.waterMl || 0) > 0 ||
+      (data.workoutLogs || []).length > 0 ||
+      (data.cardioLogs || []).length > 0 ||
+      (data.steps || 0) > 0
+    );
     const isSelected = selectedDate === dateStr;
 
     let statusColor = 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400';
@@ -107,12 +113,15 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
     const tableData = last7Days.map(date => {
       const isToday = new Date().toISOString().split('T')[0] === date;
       const data = isToday ? todayData : history[date];
-      if (!data || (data.meals.length === 0 && data.waterMl === 0)) return [date.split('-').reverse().join('/'), 'Sem dados', '-', '-', '-', '-'];
+      if (!data || (data.meals.length === 0 && data.waterMl === 0 && (data.cardioLogs || []).length === 0 && !data.steps)) {
+        return [date.split('-').reverse().join('/'), 'Sem dados', '-', '-', '-', '-', '-', '-'];
+      }
       
       const cals = data.meals.reduce((sum, m) => sum + m.calories, 0);
       const prot = data.meals.reduce((sum, m) => sum + m.protein, 0);
       const carbs = data.meals.reduce((sum, m) => sum + m.carbs, 0);
       const fats = data.meals.reduce((sum, m) => sum + m.fats, 0);
+      const cardioCals = (data.cardioLogs || []).reduce((sum, log) => sum + (log.calories || 0), 0);
       
       let goalCals = 2000;
       if (userProfile && userProfile.goal === 'lose') goalCals = 1800;
@@ -124,13 +133,15 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
         `${prot}g`,
         `${carbs}g`,
         `${fats}g`,
-        `${data.waterMl}ml`
+        `${data.waterMl}ml`,
+        `${data.steps || 0}`,
+        `${cardioCals} kcal`
       ];
     });
 
     autoTable(doc, {
       startY: 45,
-      head: [['Data', 'Calorias', 'Proteínas', 'Carboidratos', 'Gorduras', 'Água']],
+      head: [['Data', 'Calorias', 'Proteinas', 'Carboidratos', 'Gorduras', 'Agua', 'Passos', 'Cardio']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [16, 185, 129] } // emerald-500
@@ -148,19 +159,20 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
     }
 
     const csvRows = [];
-    csvRows.push(['Data', 'Refeição', 'Calorias', 'Proteína (g)', 'Carboidratos (g)', 'Gorduras (g)', 'Água (ml)'].join(','));
+    csvRows.push(['Data', 'Refeicao', 'Calorias', 'Proteina (g)', 'Carboidratos (g)', 'Gorduras (g)', 'Agua (ml)', 'Passos', 'Cardio (kcal)'].join(','));
 
     last7Days.forEach(date => {
       const isToday = new Date().toISOString().split('T')[0] === date;
       const data = isToday ? todayData : history[date];
+      const cardioCals = (data?.cardioLogs || []).reduce((sum, log) => sum + (log.calories || 0), 0);
       
-      if (!data || (data.meals.length === 0 && data.waterMl === 0)) {
-        csvRows.push([date.split('-').reverse().join('/'), 'Sem dados', '-', '-', '-', '-', '-'].join(','));
+      if (!data || (data.meals.length === 0 && data.waterMl === 0 && cardioCals === 0 && !data.steps)) {
+        csvRows.push([date.split('-').reverse().join('/'), 'Sem dados', '-', '-', '-', '-', '-', '-', '-'].join(','));
         return;
       }
 
       if (data.meals.length === 0) {
-        csvRows.push([date.split('-').reverse().join('/'), 'Nenhuma refeição', '-', '-', '-', '-', data.waterMl].join(','));
+        csvRows.push([date.split('-').reverse().join('/'), 'Nenhuma refeicao', '-', '-', '-', '-', data.waterMl, data.steps || 0, cardioCals].join(','));
       } else {
         data.meals.forEach((meal, index) => {
           csvRows.push([
@@ -170,7 +182,9 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
             meal.protein,
             meal.carbs,
             meal.fats,
-            index === 0 ? data.waterMl : ''
+            index === 0 ? data.waterMl : '',
+            index === 0 ? data.steps || 0 : '',
+            index === 0 ? cardioCals : ''
           ].join(','));
         });
       }
@@ -271,6 +285,18 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
                     {(selectedData.meals || []).reduce((sum, m) => sum + (m.fats || 0), 0)}g
                   </p>
                 </div>
+                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Passos</p>
+                  <p className="font-bold text-lg dark:text-white">
+                    {(selectedData.steps || 0).toLocaleString('pt-BR')}
+                  </p>
+                </div>
+                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Cardio</p>
+                  <p className="font-bold text-lg dark:text-white">
+                    {(selectedData.cardioLogs || []).reduce((sum, log) => sum + (log.calories || 0), 0)} kcal
+                  </p>
+                </div>
               </div>
               
               <div>
@@ -297,6 +323,20 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
                       <div key={log.id} className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl">
                         <span className="font-medium text-sm dark:text-white">{log.workoutName}</span>
                         <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{log.duration} min</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedData.cardioLogs && selectedData.cardioLogs.length > 0 && (
+                <div>
+                  <h4 className="font-bold text-sm mb-2 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Cardio</h4>
+                  <div className="space-y-2">
+                    {selectedData.cardioLogs.map(log => (
+                      <div key={log.id} className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl">
+                        <span className="font-medium text-sm dark:text-white">{log.type}</span>
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{log.calories} kcal</span>
                       </div>
                     ))}
                   </div>

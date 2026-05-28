@@ -71,15 +71,34 @@ export interface WorkoutLog {
   mood?: 'great' | 'good' | 'tired' | 'bad';
 }
 
+export interface CardioLog {
+  id: string;
+  date: string;
+  type: string;
+  duration: number; // in minutes
+  intensity: 'low' | 'medium' | 'high';
+  calories: number;
+  speed?: number; // in km/h
+}
+
 export interface PlannedWorkout {
   id: string;
   workoutId: string;
   day: string; // 'seg', 'ter', etc.
 }
 
+export interface DailyHistoryEntry {
+  meals: Meal[];
+  waterMl: number;
+  workoutLogs?: WorkoutLog[];
+  cardioLogs?: CardioLog[];
+  steps?: number;
+}
+
 export interface DailyData {
   meals: Meal[];
   waterMl: number;
+  steps: number;
   goals: {
     calories: number;
     protein: number;
@@ -93,7 +112,8 @@ export interface DailyData {
   plannedWorkouts: PlannedWorkout[];
   workouts: Workout[];
   workoutLogs: WorkoutLog[];
+  cardioLogs: CardioLog[];
   theme: 'light' | 'dark';
   lastActiveDate?: string;
-  history?: Record<string, { meals: Meal[], waterMl: number, workoutLogs?: WorkoutLog[] }>;
+  history?: Record<string, DailyHistoryEntry>;
 }

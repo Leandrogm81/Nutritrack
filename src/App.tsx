@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { DailyData, Meal, PlannedMeal, Workout, WorkoutLog, PlannedWorkout } from './types';
+import { CardioLog, DailyData, Meal, PlannedMeal, Workout, WorkoutLog, PlannedWorkout } from './types';
 import Dashboard from './components/Dashboard';
 import MealForm from './components/MealForm';
 import WaterTracker from './components/WaterTracker';
@@ -19,14 +19,16 @@ import ThemeToggle from './components/ThemeToggle';
 import WorkoutGenerator from './components/WorkoutGenerator';
 import WorkoutPlanner from './components/WorkoutPlanner';
 import WorkoutTracker from './components/WorkoutTracker';
+import ActivityTracker from './components/ActivityTracker';
 import { motion, AnimatePresence } from 'motion/react';
 
 type Section = 'dashboard' | 'recipes' | 'workout' | 'history' | 'analytics' | 'planner' | 'profile';
-type WorkoutSubSection = 'tracker' | 'planner' | 'generator';
+type WorkoutSubSection = 'tracker' | 'planner' | 'cardio' | 'generator';
 
 const INITIAL_DATA: DailyData = {
   meals: [],
   waterMl: 0,
+  steps: 0,
   goals: {
     calories: 2000,
     protein: 150,
@@ -39,10 +41,15 @@ const INITIAL_DATA: DailyData = {
   plannedWorkouts: [],
   workouts: [],
   workoutLogs: [],
+  cardioLogs: [],
   theme: 'light',
   lastActiveDate: new Date().toISOString().split('T')[0],
   history: {},
 };
+
+const createId = () => (typeof crypto !== 'undefined' && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : Math.random().toString(36).substring(2, 15) + Date.now();
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
   constructor(props: { children: React.ReactNode }) {
@@ -111,9 +118,13 @@ export default function App() {
         goals: { ...INITIAL_DATA.goals, ...(prev?.goals || {}) },
         history: prev?.history || {},
         meals: Array.isArray(prev?.meals) ? prev.meals : [],
+        steps: Number.isFinite(prev?.steps) ? prev.steps : 0,
         weightHistory: Array.isArray(prev?.weightHistory) ? prev.weightHistory : [],
         plannedMeals: Array.isArray(prev?.plannedMeals) ? prev.plannedMeals : [],
         plannedWorkouts: Array.isArray(prev?.plannedWorkouts) ? prev.plannedWorkouts : [],
+        workouts: Array.isArray(prev?.workouts) ? prev.workouts : [],
+        workoutLogs: Array.isArray(prev?.workoutLogs) ? prev.workoutLogs : [],
+        cardioLogs: Array.isArray(prev?.cardioLogs) ? prev.cardioLogs : [],
       };
 
       let changed = false;
@@ -122,18 +133,22 @@ export default function App() {
           updated.history[updated.lastActiveDate] = {
             meals: [...(updated.meals || [])],
             waterMl: updated.waterMl || 0,
-            workoutLogs: [...(updated.workoutLogs || [])]
+            workoutLogs: [...(updated.workoutLogs || [])],
+            cardioLogs: [...(updated.cardioLogs || [])],
+            steps: updated.steps || 0
           };
         }
         updated.meals = [];
         updated.waterMl = 0;
+        updated.steps = 0;
         updated.workoutLogs = [];
+        updated.cardioLogs = [];
         updated.lastActiveDate = today;
         changed = true;
       }
 
       // Check if we actually changed anything to avoid infinite loops
-      const hasAllKeys = prev && prev.goals && prev.meals && prev.weightHistory && prev.plannedMeals;
+      const hasAllKeys = prev && prev.goals && prev.meals && prev.weightHistory && prev.plannedMeals && prev.workouts && prev.workoutLogs && prev.cardioLogs && typeof prev.steps === 'number';
       if (!hasAllKeys || changed) return updated;
       return prev;
     });
@@ -253,25 +268,32 @@ export default function App() {
     }));
   };
 
+  const handleSaveSteps = (steps: number) => {
+    setData(prev => ({
+      ...prev,
+      steps: Math.max(0, Math.round(steps || 0))
+    }));
+  };
 
+  const handleAddCardio = (cardio: Omit<CardioLog, 'id' | 'date'>) => {
+    const newCardio: CardioLog = {
+      ...cardio,
+      id: createId(),
+      date: new Date().toISOString().split('T')[0],
+    };
 
-  // Daily reset logic: check if the last meal/water was on a different day
-  useEffect(() => {
-    const lastUpdate = localStorage.getItem('nutritrack_last_update');
-    const today = new Date().toLocaleDateString();
+    setData(prev => ({
+      ...prev,
+      cardioLogs: [newCardio, ...(prev.cardioLogs || [])],
+    }));
+  };
 
-    if (lastUpdate && lastUpdate !== today) {
-      // It's a new day! Reset daily metrics but keep goals and saved diets
-      setData(prev => ({
-        ...prev,
-        meals: [],
-        waterMl: 0,
-      }));
-    }
-    localStorage.setItem('nutritrack_last_update', today);
-  }, []);
-
-
+  const handleRemoveCardio = (id: string) => {
+    setData(prev => ({
+      ...prev,
+      cardioLogs: (prev.cardioLogs || []).filter(log => log.id !== id),
+    }));
+  };
 
   return (
     <ErrorBoundary>
@@ -423,6 +445,12 @@ export default function App() {
                   Plano
                 </button>
                 <button
+                  onClick={() => setWorkoutSubSection('cardio')}
+                  className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${workoutSubSection === 'cardio' ? 'bg-zinc-900 dark:bg-emerald-500 text-white shadow-lg' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600'}`}
+                >
+                  Cardio
+                </button>
+                <button
                   onClick={() => setWorkoutSubSection('generator')}
                   className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${workoutSubSection === 'generator' ? 'bg-zinc-900 dark:bg-emerald-500 text-white shadow-lg' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600'}`}
                 >
@@ -466,6 +494,22 @@ export default function App() {
                     />
                   </motion.div>
                 )}
+                {workoutSubSection === 'cardio' && (
+                  <motion.div
+                    key="cardio"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <ActivityTracker
+                      steps={data.steps || 0}
+                      cardioLogs={data.cardioLogs || []}
+                      onSaveSteps={handleSaveSteps}
+                      onAddCardio={handleAddCardio}
+                      onRemoveCardio={handleRemoveCardio}
+                    />
+                  </motion.div>
+                )}
                 {workoutSubSection === 'generator' && (
                   <motion.div
                     key="generator"
@@ -504,7 +548,7 @@ export default function App() {
               />
               
               <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
-                <HistoryCalendar history={data.history || {}} userProfile={data.profile || null} todayData={{ meals: data.meals, waterMl: data.waterMl }} />
+                <HistoryCalendar history={data.history || {}} userProfile={data.profile || null} todayData={{ meals: data.meals, waterMl: data.waterMl, workoutLogs: data.workoutLogs, cardioLogs: data.cardioLogs, steps: data.steps }} />
               </div>
             </motion.div>
           )}

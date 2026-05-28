@@ -1,12 +1,12 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-import { DailyData, UserProfile, WorkoutLog } from '../types';
+import { DailyData, DailyHistoryEntry, UserProfile } from '../types';
 import { TrendingUp, Scale, PieChart, Calendar, Activity, Dumbbell } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AnalyticsProps {
   data: DailyData;
-  history: Record<string, { meals: any[], waterMl: number, workoutLogs?: WorkoutLog[] }>;
+  history: Record<string, DailyHistoryEntry>;
   userProfile: UserProfile | null;
 }
 

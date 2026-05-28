@@ -1,7 +1,8 @@
 import React from 'react';
-import { Activity, Droplets, PieChart, Zap, Dumbbell, CheckCircle2 } from 'lucide-react';
+import { Activity, Droplets, Flame, Footprints, Dumbbell, CheckCircle2 } from 'lucide-react';
 import { DailyData, WorkoutLog } from '../types';
 import { motion } from 'motion/react';
+import { calculateStepCalories } from './ActivityTracker';
 
 interface DashboardProps {
   data: DailyData;
@@ -15,6 +16,10 @@ export default function Dashboard({ data }: DashboardProps) {
   const totalProtein = data.meals.reduce((sum, meal) => sum + meal.protein, 0);
   const totalCarbs = data.meals.reduce((sum, meal) => sum + meal.carbs, 0);
   const totalFats = data.meals.reduce((sum, meal) => sum + meal.fats, 0);
+  const cardioCalories = (data.cardioLogs || []).reduce((sum, log) => sum + (log.calories || 0), 0);
+  const stepCalories = Math.round(calculateStepCalories(data.steps || 0));
+  const caloriesOut = cardioCalories + stepCalories;
+  const calorieBalance = totalCalories - caloriesOut;
 
   const calPercentage = data.goals.calories > 0 ? Math.min((totalCalories / data.goals.calories) * 100, 100) : 0;
   const waterPercentage = data.goals.water > 0 ? Math.min((data.waterMl / data.goals.water) * 100, 100) : 0;
@@ -96,6 +101,34 @@ export default function Dashboard({ data }: DashboardProps) {
           );
         })}
       </div>
+
+      {(data.steps > 0 || caloriesOut > 0) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-2 gap-3"
+        >
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-sm border border-black/5 dark:border-white/5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Gasto</p>
+              <Flame className="w-5 h-5 text-rose-500" />
+            </div>
+            <p className="text-xl font-bold text-zinc-900 dark:text-white">{caloriesOut.toLocaleString('pt-BR')}</p>
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider">kcal estimadas</p>
+          </div>
+
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-sm border border-black/5 dark:border-white/5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Balanco</p>
+              <Footprints className="w-5 h-5 text-emerald-500" />
+            </div>
+            <p className={`text-xl font-bold ${calorieBalance >= 0 ? 'text-amber-500' : 'text-blue-500'}`}>
+              {calorieBalance >= 0 ? '+' : ''}{calorieBalance.toLocaleString('pt-BR')}
+            </p>
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider">kcal liquidas</p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Water Card */}
       <motion.div 
