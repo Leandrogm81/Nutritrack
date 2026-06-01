@@ -1,20 +1,22 @@
 # Handoff — Continuidade de Sessão
 
 ## 1. Objetivo atual
-Tornar o NutriTrack MVP v1.2.1 instalável como app Android (PWA), exibindo o novo logotipo no cabeçalho e corrigindo a compatibilidade das imagens.
+Tornar o NutriTrack MVP v1.2.2 instalável como app Android (PWA), exibindo o novo logotipo no cabeçalho, corrigindo a compatibilidade das imagens e otimizando o menu inferior para melhor legibilidade em mobile.
 
 ## 2. Estado geral do projeto
-MVP completo. Código com as novas correções publicado no GitHub (`main`, commit `ab72665`). Deploy Vercel automático disparado pelo push. Correção de instalação PWA realizada: os arquivos `pwa-512x512.png` e `pwa-maskable-512x512.png` estavam com cabeçalhos JPEG disfarçados de PNG, o que fazia o Chrome Android rejeitar o manifesto. Foram convertidos com sucesso em PNGs de verdade usando `sharp`. O cabeçalho agora exibe o novo logotipo (`favicon.svg`).
+MVP completo. Código com as novas correções publicado no GitHub (`main`, commit `514c14d`). Deploy Vercel automático disparado pelo push. Correção de instalação PWA realizada: os arquivos `pwa-512x512.png` e `pwa-maskable-512x512.png` estavam com cabeçalhos JPEG disfarçados de PNG, o que fazia o Chrome Android rejeitar o manifesto. Foram convertidos com sucesso em PNGs de verdade usando `sharp`. O cabeçalho agora exibe o novo logotipo (`favicon.svg`). O menu inferior foi otimizado (fonte menor e menos padding) para melhor encaixe em mobile.
 
 ## 3. O que já foi feito nesta sessão
+- **Otimização do menu inferior**: tamanho de fonte reduzido para `8px` (com fallback de `10px` em desktop) e padding reduzido de `p-3` para `p-2` no mobile no componente `NavButton` (`src/App.tsx`), evitando quebras ou cortes de layout em dispositivos móveis.
 - **Substituição do ícone no cabeçalho** (`ab72665`): trocado o ícone genérico `Activity` (batimento cardíaco) pela imagem do novo logotipo (`favicon.svg`).
 - **PWA Imagens Hardening**:
   - `public/pwa-512x512.png` e `public/pwa-maskable-512x512.png` convertidos para o formato PNG nativo (antes eram JPEG renomeados, gerando erros de decodificação no Chrome Android).
   - Link de `<link rel="manifest" href="/manifest.webmanifest" />` adicionado de forma explícita no arquivo `index.html`.
 - **Compilação e validação do build de produção**: `npm run build` executado e bem-sucedido.
-- **Git Commit & Push**: commit `ab72665` enviado ao repositório remoto.
+- **Git Commit & Push**: commits `ab72665` e `514c14d` enviados ao repositório remoto.
 
 ## 4. Decisões tomadas
+- **Navegação inferior compacta**: o número elevado de abas (7 seções) causava aperto excessivo no mobile. O ajuste dinâmico com padding e font-size menores no mobile foi a solução ideal sem remover abas necessárias.
 - **Conversão forçada via sharp**: qualquer imagem de ícone do manifesto PWA deve ter tipo MIME e cabeçalho correspondentes. Usar JPEGs com extensão `.png` impede a validação do PWA pelo Chrome. A correção foi automatizada via script Node/sharp.
 - **Logotipo no cabeçalho**: o logotipo `favicon.svg` foi integrado diretamente como tag `img` no cabeçalho, garantindo identidade visual harmônica com o PWA.
 
