@@ -30,7 +30,16 @@ async function openRouterCompletion(payload: any) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`API error: ${response.status} - ${errorText}`);
+    let errorMessage = errorText;
+    try {
+      const parsed = JSON.parse(errorText);
+      if (parsed?.error) {
+        errorMessage = parsed.error;
+      }
+    } catch {
+      // Keep the plain response body when the proxy/upstream does not return JSON.
+    }
+    throw new Error(`API error: ${response.status} - ${errorMessage}`);
   }
 
   const data = await response.json();

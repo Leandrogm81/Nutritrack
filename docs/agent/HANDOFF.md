@@ -1,45 +1,65 @@
 # Handoff — Continuidade de Sessão
 
 ## 1. Objetivo atual
-Tornar o NutriTrack MVP v1.2.7 instalável como app Android (PWA), com integração de IA rodando via OpenCode Go (`https://opencode.ai/zen/go/v1`) com o modelo `mimo-v2.5`, mitigando erros de cache PWA, corrigindo caminhos e prevenindo timeouts de conexão.
+Estabilizar a integração de IA do NutriTrack em produção na Vercel via OpenCode Go (`mimo-v2.5`), eliminando timeouts de função em `/api/opencode-proxy`.
 
 ## 2. Estado geral do projeto
-MVP completo. Código publicado no GitHub (`main`, commit `d31c324`). Deploy Vercel automático disparado pelo push. Integração de IA migrada de OpenCode Go de forma estável. Ambos os proxies `/api/openrouter-proxy` e `/api/opencode-proxy` contam com tolerância a falhas na URL, na nomenclatura do modelo e na transmissão do corpo de requisição (resolvida pendência de timeout HTTP 504 no Edge runtime).
+O app estava no `main` remoto até `13980d8`, com correção anterior para `content-length`. O usuário reportou novo erro real de produção:
 
-## 3. O que já foi feito nesta sessão
-- **Prevenção de Timeouts de Conexão (HTTP 504)**:
-  - Removida a propriedade `duplex: 'half'` dos métodos `fetch` de ambos os proxies Edge. Como o corpo da requisição foi convertido para string (`bodyText`) para suportar a sanitização de nomes de modelo, manter `duplex: 'half'` fazia a conexão de rede aguardar indefinitely o fechamento de um fluxo inexistente, travando até expirar o tempo limite de 25 segundos da Vercel.
-- **Sanitização de nome de modelo**:
-  - Implementada a interceptação e reescrita do corpo da requisição JSON nos proxies de borda. Prefixo de vendor/autor (ex: `xiaomi/`) é removido antes de enviar a requisição ao endpoint da OpenCode Go, resolvendo erros de modelo não suportado (HTTP 401).
-- **Auto-correção de endpoints**:
-  - Implementada a lógica de verificação de caminhos de URL nos proxies de borda. Se `OPENCODE_API_URL` omitir o path `/chat/completions`, ele é concatenado dinamicamente.
-- **Mitigação de Erros de Cache**:
-  - A rota `/api/openrouter-proxy.ts` foi duplicada como endpoint independente, mantendo compatibilidade de cache com clientes antigos.
-- **Migração para OpenCode Go**:
-  - Criado o edge proxy `/api/opencode-proxy.ts` apontando para `https://opencode.ai/zen/go/v1/chat/completions` (suporta `OPENCODE_API_KEY`, `OPENCODE_GO_API_KEY` ou fallback para `OPENROUTER_API_KEY`).
-  - Atualizado `src/services/geminiService.ts` e `vite.config.ts` para usar o novo proxy e as novas definições de modelo.
-- **Otimização do menu inferior**: tamanho de fonte reduzido para `8px` e padding reduzido no mobile no componente `NavButton` (`src/App.tsx`), evitando quebras de layout.
-- **PWA Imagens Hardening & Logotipo**: formato dos ícones corrigido e logotipo `favicon.svg` inserido no cabeçalho.
-- **Compilação e validação do build de produção**: `npm run build` e testes executados e bem-sucedidos.
-- **Git Commit & Push**: commits `93ccddb`, `9f791cb`, `f301ee5`, `d506fa2`, `616a60f`, `d506fa2`, `84ef02e` e `d31c324` enviados ao repositório remoto.
+```text
+API error: 504 - FUNCTION_INVOCATION_TIMEOUT
+/api/opencode-proxy: Failed to load resource: 504
+```
 
-## 4. Decisões tomadas
-- **Renomeação do Proxy**: preferiu-se renomear o arquivo e rota do proxy para `/api/opencode-proxy.ts` para manter a coerência semântica com o novo provedor, mas a lógica da chamada mantém compatibilidade com chaves anteriores.
-- **Preservação de Mimo v2.5**: o modelo oficial exigido permanece `xiaomi/mimo-v2.5`.
-- **Navegação inferior compacta**: o tamanho de fonte dinâmico reduziu o aperto no mobile.
+A análise local confirmou que os proxies ainda usavam Vercel Edge Function. Para chamadas de IA longas, Edge precisa começar a responder rapidamente; se a OpenCode Go demora antes de devolver headers, a Vercel encerra a função com 504.
+
+## 3. O que foi feito nesta sessão
+- `api/opencode-proxy.ts` migrado de Edge runtime para Vercel Node Web Handler (`export default { fetch }`).
+- `api/openrouter-proxy.ts` recebeu a mesma correção para manter compatibilidade com clientes antigos/cache.
+- `vercel.json` passou a definir `maxDuration: 60` para os dois proxies.
+- Adicionado timeout interno de 55s (`OPENCODE_PROXY_TIMEOUT_MS` opcional) para retornar erro JSON controlado antes de estouro da plataforma.
+- Headers enviados ao upstream foram reduzidos ao mínimo (`Authorization`, `Content-Type`, `Accept`), evitando repasse de headers de navegador/desnecessários.
+- `src/services/geminiService.ts` passou a extrair mensagem de erro JSON do proxy antes de lançar erro.
+
+## 4. Validações executadas
+| Comando | Resultado |
+|---|---|
+| `npm run lint` | passou |
+| `npm run test -- --run` | passou: 7 arquivos, 23 testes |
+| `npm run build` | passou; warning de chunk size permanece |
 
 ## 5. Arquivos importantes
-- `src/App.tsx` — Cabeçalho atualizado para renderizar `favicon.svg`
-- `index.html` — Adicionado link do manifesto explicitamente
-- `public/pwa-512x512.png` — Imagem de 512x512 corrigida (PNG nativo)
-- `public/pwa-maskable-512x512.png` — Imagem maskable corrigida (PNG nativo)
+| Arquivo | Função | Observação |
+|---|---|---|
+| `/api/opencode-proxy.ts` | Proxy IA principal | Agora Node runtime, timeout controlado |
+| `/api/openrouter-proxy.ts` | Proxy legado/compatível | Mesmo comportamento do proxy principal |
+| `/vercel.json` | Configuração Vercel | `maxDuration` dos proxies em 60s |
+| `/src/services/geminiService.ts` | Cliente IA | Mensagem de erro do proxy mais legível |
 
 ## 6. Problemas encontrados
-- **Assinatura do arquivo PNG inválida**: `pwa-512x512.png` e `pwa-maskable-512x512.png` possuíam assinatura de bytes JPEG (`ffd8ffe000104a46`). Isso quebrava silenciosamente a validação de instalação do PWA no Android Chrome. Corrigido com script de conversão via `sharp`.
+- O erro `FUNCTION_INVOCATION_TIMEOUT` não era mais causado por `content-length`; era compatível com limite operacional do Edge runtime aguardando resposta inicial do upstream.
+- A Vercel CLI não está instalada localmente, então logs remotos não foram consultados por CLI.
+- Os erros `message channel closed before a response was received` continuam classificados como ruído provável de extensão do navegador, não como falha do app.
 
 ## 7. Pendências
-- Testar a instalação no Android Chrome acessando a URL do deploy na Vercel após limpar cache do navegador.
+| Pendência | Impacto | Prioridade |
+|---|---|---|
+| Commitar/pushar a correção e aguardar deploy Vercel | Necessário para validar produção | Alta |
+| Retestar chamada de IA em produção | Confirma se a migração para Node resolveu o 504 | Alta |
+| Confirmar `OPENCODE_API_KEY` ou `OPENCODE_GO_API_KEY` na Vercel | IA não funciona sem segredo server-side | Alta |
+| Testar App em Prod via PWA Android | Validação UX final do MVP | Alta |
+| Avisos de IA e privacidade | Compliance/LGPD | Alta |
 
-## 8. Segurança para troca de sessão
-- Seguro rodar `/new`? **Sim**
-- Motivo: Alterações de código e imagem commitadas no GitHub, build local testado e limpo, arquivos de continuidade atualizados.
+## 8. Próxima ação recomendada
+Commitar e publicar a correção. Após o deploy, repetir exatamente o fluxo que gerou o 504 em produção e verificar se `/api/opencode-proxy` responde. Se ainda retornar 504, conferir se o corpo é o JSON controlado do proxy (`OpenCode Go did not respond...`) ou o erro de plataforma da Vercel (`FUNCTION_INVOCATION_TIMEOUT`).
+
+## 9. O que o próximo agente NÃO deve fazer
+- Não voltar os proxies para Edge runtime para fluxos longos de IA.
+- Não restaurar `content-length` ao modificar o body.
+- Não usar SDK `@google/genai`.
+- Não iniciar backend/login/sync antes de validar o PWA e a IA em produção.
+
+## 10. Segurança para troca de sessão
+- Seguro rodar `/new`? Com ressalvas.
+- Motivo: correção local está implementada e validada, mas ainda precisa commit/push/deploy para confirmar em produção.
+- Nome sugerido para a próxima sessão: Publicar_Correcao_Proxy_Node_Vercel

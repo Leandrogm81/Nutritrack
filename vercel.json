@@ -1,4 +1,12 @@
 {
+  "functions": {
+    "api/opencode-proxy.ts": {
+      "maxDuration": 60
+    },
+    "api/openrouter-proxy.ts": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

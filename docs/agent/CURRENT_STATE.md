@@ -1,28 +1,32 @@
 # Current State
 
 ## Estado atual
-MVP v1.2.7 publicado no GitHub (`main`, commit `d31c324`). Integração de IA migrada de OpenRouter para OpenCode Go (`https://opencode.ai/zen/go/v1/chat/completions`), mantendo o modelo `xiaomi/mimo-v2.5` no cliente. Removida a propriedade `duplex: 'half'` nos proxies Edge ao tratar corpos de requisição baseados em string, mitigando de forma definitiva travamentos de conexão e erros de Timeout (HTTP 504).
+MVP v1.2.7 no `main` remoto até o commit `13980d8`. Nesta sessão foi reproduzida por análise a causa provável do erro reportado em produção: `/api/opencode-proxy` ainda rodava como Vercel Edge Function e dependia de resposta inicial do provedor de IA antes do limite de Edge, gerando `FUNCTION_INVOCATION_TIMEOUT` quando a OpenCode Go demorava.
 
 ## Última ação relevante
-Commit `d31c324` — remove propriedade duplex de fetch para evitar travamentos e timeouts HTTP 504.
+Correção local preparada: `api/opencode-proxy.ts` e `api/openrouter-proxy.ts` migrados do runtime Edge para Vercel Node Web Handler (`export default { fetch }`), com `maxDuration: 60` em `vercel.json`, timeout interno de 55s, headers mínimos para o upstream e erro JSON controlado. `src/services/geminiService.ts` agora extrai a mensagem de erro JSON do proxy.
 
 ## Arquivos relevantes
-- `src/services/geminiService.ts` — Serviços de IA apontando para o novo proxy `/api/opencode-proxy`
-- `api/opencode-proxy.ts` — Proxy Edge integrado sem duplex e com auto-correção e sanitização
-- `api/openrouter-proxy.ts` — Proxy compatível sem duplex e com a mesma lógica de auto-correção e sanitização
-- `vite.config.ts` — Definições de ambiente do Vite atualizadas para OpenCode
+- `api/opencode-proxy.ts` — proxy principal OpenCode Go em Node runtime, com timeout controlado
+- `api/openrouter-proxy.ts` — proxy compatível/cache legado com mesma correção
+- `vercel.json` — `maxDuration` de 60s para os proxies de IA
+- `src/services/geminiService.ts` — cliente IA apontando para `/api/opencode-proxy`
+
+## Validações executadas
+- `npm run lint` passou
+- `npm run test -- --run` passou (7 arquivos, 23 testes)
+- `npm run build` passou (warning de chunk size permanece não bloqueante)
 
 ## Pendências imediatas
-- Configurar variáveis de ambiente no painel da Vercel (`OPENCODE_API_KEY` ou `OPENCODE_GO_API_KEY`)
-- Testar chamada de IA no app para garantir o funcionamento correto com o novo endpoint
-- Limpar cache do Chrome Android e testar instalação PWA v1.2.2/v1.2.3
+- Commitar e publicar a correção na Vercel
+- Confirmar variáveis de ambiente no painel da Vercel (`OPENCODE_API_KEY` ou `OPENCODE_GO_API_KEY`)
+- Retestar chamada de IA em produção após deploy
 
 ## Riscos atuais
+- Se a OpenCode Go demorar mais de 55s, o app receberá 504 controlado do proxy; não deve mais aparecer `FUNCTION_INVOCATION_TIMEOUT` da Vercel
 - Smoke-test de instalação física no Android ainda não finalizado
 
-## Próxima ação recomendada
-Limpar cache do Chrome Android → acessar URL → Menu (⋮) → Adicionar à tela inicial.
-
 ## Não fazer agora
+- Não voltar os proxies para Edge runtime para fluxos longos de IA
+- Não restaurar `content-length` ao reenviar body modificado
 - Não abrir novas sprints sem decisão humana
-- Não remover `skipWaiting` ou headers `no-cache`
