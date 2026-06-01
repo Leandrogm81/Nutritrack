@@ -1,15 +1,15 @@
 import { Meal, DailyData, UserProfile, PlannedMeal, Workout, Exercise, PlannedWorkout } from "../types";
 
 // SECURITY: getApiKey() returns undefined intentionally.
-// All AI calls must go through the Vercel server-side proxy (/api/openrouter-proxy).
-// The OPENROUTER_API_KEY secret is kept exclusively on the server (no VITE_ prefix).
-// See: /api/openrouter-proxy.ts and /docs/audit/final-audit.md section 5.
+// All AI calls must go through the Vercel server-side proxy (/api/opencode-proxy).
+// The API key secret is kept exclusively on the server (no VITE_ prefix).
+// See: /api/opencode-proxy.ts and /docs/audit/final-audit.md.
 const getApiKey = () => undefined;
-const getModel = () => (import.meta as any).env?.VITE_OPENROUTER_MODEL || process.env.VITE_OPENROUTER_MODEL || 'xiaomi/mimo-v2.5';
+const getModel = () => (import.meta as any).env?.VITE_OPENCODE_MODEL || process.env.VITE_OPENCODE_MODEL || (import.meta as any).env?.VITE_OPENROUTER_MODEL || process.env.VITE_OPENROUTER_MODEL || 'xiaomi/mimo-v2.5';
 
 async function openRouterCompletion(payload: any) {
   // Always route through the proxy — no direct client-side API key.
-  const url = '/api/openrouter-proxy';
+  const url = '/api/opencode-proxy';
   
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

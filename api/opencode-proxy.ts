@@ -4,20 +4,18 @@ export const config = {
 
 export default async function handler(req: Request) {
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.OPENCODE_API_KEY || process.env.OPENCODE_GO_API_KEY || process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      console.error('Missing OPENROUTER_API_KEY in Vercel environment');
+      console.error('Missing API Key (OPENCODE_API_KEY, OPENCODE_GO_API_KEY, or OPENROUTER_API_KEY) in Vercel environment');
       return new Response('Server configuration error: Missing API Key', { status: 500 });
     }
 
-    const targetUrl = new URL('https://openrouter.ai/api/v1/chat/completions');
+    const targetUrl = new URL(process.env.OPENCODE_API_URL || 'https://opencode.ai/zen/go/v1/chat/completions');
 
     const headers = new Headers(req.headers);
     headers.delete('host');
-    // Ensure we send the correct authorization to OpenRouter
+    // Ensure we send the correct authorization header
     headers.set('Authorization', `Bearer ${apiKey}`);
-    headers.set('HTTP-Referer', 'https://nutritrack.vercel.app'); // Update with your actual URL
-    headers.set('X-Title', 'NutriTrack'); // Site title for OpenRouter rankings
 
     const proxyRes = await fetch(targetUrl.toString(), {
       method: req.method,
