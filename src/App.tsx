@@ -670,7 +670,7 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
   return (
     <button 
       onClick={onClick}
-      className={`flex flex-col items-center gap-1.5 transition-all relative group ${active ? 'text-emerald-500' : 'text-zinc-400 dark:text-zinc-500'}`}
+      className={`flex flex-col items-center gap-1 sm:gap-1.5 transition-all relative group ${active ? 'text-emerald-500' : 'text-zinc-400 dark:text-zinc-500'}`}
     >
       <motion.div 
         animate={{ 
@@ -683,7 +683,7 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
           stiffness: 400, 
           damping: 25
         }}
-        className={`p-3 rounded-2xl transition-all duration-300 ${
+        className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl transition-all duration-300 ${
           active 
             ? 'bg-emerald-500 text-white shadow-xl shadow-emerald-500/30' 
             : 'bg-transparent group-hover:bg-zinc-100 dark:group-hover:bg-zinc-800'
@@ -698,7 +698,7 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
           scale: active ? 1.1 : 1,
           y: active ? -2 : 0
         }}
-        className="text-[10px] font-bold uppercase tracking-widest"
+        className="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider"
       >
         {label}
       </motion.span>
