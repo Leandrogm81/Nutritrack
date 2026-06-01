@@ -21,12 +21,12 @@ export default defineConfig(({mode}) => {
           display: 'standalone',
           icons: [
             {
-              src: 'https://picsum.photos/192/192',
+              src: '/pwa-192x192.png',
               sizes: '192x192',
               type: 'image/png'
             },
             {
-              src: 'https://picsum.photos/512/512',
+              src: '/pwa-512x512.png',
               sizes: '512x512',
               type: 'image/png'
             }
@@ -35,7 +35,10 @@ export default defineConfig(({mode}) => {
       })
     ],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      // SECURITY: OPENROUTER_API_KEY is NOT injected into the client bundle.
+      // The secret lives exclusively in the Vercel server environment (no VITE_ prefix).
+      // All AI calls go through /api/openrouter-proxy.ts.
+      'process.env.VITE_OPENROUTER_MODEL': JSON.stringify(env.VITE_OPENROUTER_MODEL || 'xiaomi/mimo-v2.5'),
     },
     resolve: {
       alias: {

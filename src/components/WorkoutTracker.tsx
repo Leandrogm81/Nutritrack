@@ -3,6 +3,7 @@ import { Workout, WorkoutLog, Exercise } from '../types';
 import { Dumbbell, Clock, CheckCircle2, ChevronRight, Play, Trash2, History, Plus, Camera, Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { geminiService } from '../services/geminiService';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface WorkoutTrackerProps {
   workouts: Workout[];
@@ -11,6 +12,7 @@ interface WorkoutTrackerProps {
 }
 
 export default function WorkoutTracker({ workouts, onLogWorkout, onDeleteWorkout }: WorkoutTrackerProps) {
+  const isOnline = useOnlineStatus();
   const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
   const [currentLog, setCurrentLog] = useState<Partial<WorkoutLog> | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -116,7 +118,9 @@ export default function WorkoutTracker({ workouts, onLogWorkout, onDeleteWorkout
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={() => handleGymEquipmentCapture(ex.name)}
-                    className="p-2 bg-emerald-100 dark:bg-emerald-500/10 rounded-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-500/20 transition-all"
+                    disabled={!isOnline}
+                    className={`p-2 rounded-full transition-all ${!isOnline ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-500/20'}`}
+                    title={isOnline ? "Analisar Equipamento (IA)" : "IA Offline"}
                   >
                     <Camera className="w-4 h-4" />
                   </button>
@@ -259,8 +263,13 @@ export default function WorkoutTracker({ workouts, onLogWorkout, onDeleteWorkout
                   <p className="text-xs text-zinc-500">{workout.exercises.length} exercícios • {workout.duration} min</p>
                 </div>
                 <button 
-                  onClick={() => onDeleteWorkout(workout.id)}
+                  onClick={() => {
+                    if (window.confirm('Excluir este treino salvo? Isso não apagará os treinos já executados do seu histórico.')) {
+                      onDeleteWorkout(workout.id);
+                    }
+                  }}
                   className="p-2 text-zinc-300 hover:text-rose-500 transition-colors"
+                  title="Excluir treino salvo"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

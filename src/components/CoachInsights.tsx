@@ -3,12 +3,14 @@ import { Sparkles, Loader2, RefreshCw } from 'lucide-react';
 import { DailyData } from '../types';
 import { geminiService } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface CoachInsightsProps {
   data: DailyData;
 }
 
 export default function CoachInsights({ data }: CoachInsightsProps) {
+  const isOnline = useOnlineStatus();
   const [insight, setInsight] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -49,15 +51,26 @@ export default function CoachInsights({ data }: CoachInsightsProps) {
           </div>
           <button 
             onClick={fetchInsight}
-            disabled={isLoading}
+            disabled={isLoading || !isOnline}
             className="p-1 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
+            title={isOnline ? "Atualizar Insight" : "IA Offline"}
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
         <AnimatePresence mode="wait">
-          {isLoading ? (
+          {!isOnline && !insight ? (
+            <motion.p 
+              key="offline"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-lg font-medium leading-tight opacity-90"
+            >
+              Você está offline. Mantenha o foco nas suas metas!
+            </motion.p>
+          ) : isLoading ? (
             <motion.div 
               key="loading"
               initial={{ opacity: 0 }}

@@ -2,7 +2,6 @@ import React from 'react';
 import { Activity, Droplets, Flame, Footprints, Dumbbell, CheckCircle2 } from 'lucide-react';
 import { DailyData, WorkoutLog } from '../types';
 import { motion } from 'motion/react';
-import { calculateStepCalories } from './ActivityTracker';
 
 interface DashboardProps {
   data: DailyData;
@@ -17,8 +16,7 @@ export default function Dashboard({ data }: DashboardProps) {
   const totalCarbs = data.meals.reduce((sum, meal) => sum + meal.carbs, 0);
   const totalFats = data.meals.reduce((sum, meal) => sum + meal.fats, 0);
   const cardioCalories = (data.cardioLogs || []).reduce((sum, log) => sum + (log.calories || 0), 0);
-  const stepCalories = Math.round(calculateStepCalories(data.steps || 0));
-  const caloriesOut = cardioCalories + stepCalories;
+  const caloriesOut = cardioCalories;
   const calorieBalance = totalCalories - caloriesOut;
 
   const calPercentage = data.goals.calories > 0 ? Math.min((totalCalories / data.goals.calories) * 100, 100) : 0;
@@ -114,7 +112,7 @@ export default function Dashboard({ data }: DashboardProps) {
               <Flame className="w-5 h-5 text-rose-500" />
             </div>
             <p className="text-xl font-bold text-zinc-900 dark:text-white">{caloriesOut.toLocaleString('pt-BR')}</p>
-            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider">kcal estimadas</p>
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider">kcal de cardio</p>
           </div>
 
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-sm border border-black/5 dark:border-white/5">

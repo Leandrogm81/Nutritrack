@@ -1,13 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { CardioLog, DailyData, Meal, PlannedMeal, Workout, WorkoutLog, PlannedWorkout } from './types';
+import { enforceSingleSlotPerMealType } from './utils/planner';
+import { CardioLog, DailyData, Meal, PlannedMeal, Workout, WorkoutLog, PlannedWorkout, WorkoutDraft } from './types';
 import Dashboard from './components/Dashboard';
 import MealForm from './components/MealForm';
 import WaterTracker from './components/WaterTracker';
 import { 
   Download, Trash2, Utensils, Activity,
   LayoutDashboard, Dumbbell,
-  TrendingUp, Calendar as CalendarIcon, User as UserIcon
+  TrendingUp, Calendar as CalendarIcon, User as UserIcon, History
 } from 'lucide-react';
 import RecipeSuggestions from './components/RecipeSuggestions';
 import DietGenerator from './components/DietGenerator';
@@ -103,8 +104,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 export default function App() {
   const [data, setData] = useLocalStorage<DailyData>('nutritrack_data', INITIAL_DATA);
-  const [activeSection, setActiveSection] = React.useState<Section>('dashboard');
+  const [activeSection, setActiveSection] = useState<Section>('dashboard');
   const [workoutSubSection, setWorkoutSubSection] = React.useState<WorkoutSubSection>('tracker');
+  const [draftMeals, setDraftMeals] = useState<PlannedMeal[] | null>(null);
+  const [draftWorkouts, setDraftWorkouts] = useState<WorkoutDraft | null>(null);
 
   // Ensure data structure is up to date (migration)
   useEffect(() => {
@@ -135,7 +138,8 @@ export default function App() {
             waterMl: updated.waterMl || 0,
             workoutLogs: [...(updated.workoutLogs || [])],
             cardioLogs: [...(updated.cardioLogs || [])],
-            steps: updated.steps || 0
+            steps: updated.steps || 0,
+            goals: { ...(updated.goals || INITIAL_DATA.goals) }
           };
         }
         updated.meals = [];
@@ -219,11 +223,23 @@ export default function App() {
   const handleUpdatePlanner = (meals: PlannedMeal[]) => {
     setData(prev => ({
       ...prev,
-      plannedMeals: meals.map(m => ({
+      plannedMeals: enforceSingleSlotPerMealType(meals).map(m => ({
         ...m,
         id: m.id || Math.random().toString(36).substring(2, 9)
       }))
     }));
+  };
+
+  const handleDraftPlanner = (meals: PlannedMeal[]) => {
+    setDraftMeals(enforceSingleSlotPerMealType(meals).map(m => ({
+      ...m,
+      id: m.id || Math.random().toString(36).substring(2, 9)
+    })));
+    setActiveSection('planner');
+  };
+
+  const handleClearDraft = () => {
+    setDraftMeals(null);
   };
 
   const handleUpdateWorkoutPlanner = (planned: PlannedWorkout[]) => {
@@ -234,12 +250,36 @@ export default function App() {
   };
 
   const handleImportWorkouts = (workouts: Workout[], planned: PlannedWorkout[]) => {
-    setData(prev => ({
-      ...prev,
-      workouts: [...prev.workouts, ...workouts],
-      plannedWorkouts: [...prev.plannedWorkouts, ...planned]
-    }));
+    console.log(`[Validation] Confirming ${workouts.length} workouts and ${planned.length} planned entries.`);
+    setData(prev => {
+      const existingWorkoutIds = new Set(prev.workouts.map(w => w.id));
+      const newWorkouts = workouts.filter(w => !existingWorkoutIds.has(w.id));
+      
+      if (newWorkouts.length < workouts.length) {
+        console.warn(`[Validation] Ignored ${workouts.length - newWorkouts.length} workouts due to ID collision.`);
+      }
+      
+      const existingPlannedIds = new Set(prev.plannedWorkouts.map(p => p.id));
+      const newPlanned = planned.filter(p => !existingPlannedIds.has(p.id));
+
+      console.log(`[Validation] Successfully saved ${newWorkouts.length} new workouts to catalog and ${newPlanned.length} to planner.`);
+      
+      return {
+        ...prev,
+        workouts: [...prev.workouts, ...newWorkouts],
+        plannedWorkouts: [...prev.plannedWorkouts, ...newPlanned]
+      };
+    });
     setWorkoutSubSection('planner');
+  };
+
+  const handleDraftWorkouts = (draft: WorkoutDraft) => {
+    setDraftWorkouts(draft);
+    setWorkoutSubSection('planner');
+  };
+
+  const handleClearWorkoutDraft = () => {
+    setDraftWorkouts(null);
   };
 
   const handleImportData = (importedData: DailyData) => {
@@ -264,7 +304,8 @@ export default function App() {
   const handleDeleteWorkout = (id: string) => {
     setData(prev => ({
       ...prev,
-      workouts: prev.workouts.filter(w => w.id !== id)
+      workouts: prev.workouts.filter(w => w.id !== id),
+      plannedWorkouts: prev.plannedWorkouts.filter(p => p.workoutId !== id)
     }));
   };
 
@@ -376,6 +417,18 @@ export default function App() {
             </motion.div>
           )}
 
+          {activeSection === 'history' && (
+            <motion.div 
+              key="history"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="px-1 pb-32"
+            >
+              <HistoryCalendar history={data.history || {}} userProfile={data.profile || null} todayData={{ meals: data.meals, waterMl: data.waterMl, workoutLogs: data.workoutLogs, cardioLogs: data.cardioLogs, steps: data.steps, goals: data.goals }} />
+            </motion.div>
+          )}
+
           {activeSection === 'analytics' && (
             <motion.div 
               key="analytics"
@@ -398,7 +451,10 @@ export default function App() {
             >
               <WeeklyPlanner 
                 data={data} 
+                draftMeals={draftMeals}
                 onUpdatePlanner={handleUpdatePlanner} 
+                onDraftPlanner={handleDraftPlanner}
+                onClearDraft={handleClearDraft}
                 onLogMeal={handleAddMeal}
               />
             </motion.div>
@@ -417,7 +473,7 @@ export default function App() {
                 <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight mb-6">Gerador de Dieta</h2>
                 <DietGenerator 
                   data={data} 
-                  onUpdatePlanner={handleUpdatePlanner}
+                  onDraftPlanner={handleDraftPlanner}
                 />
               </div>
             </motion.div>
@@ -482,8 +538,8 @@ export default function App() {
                   >
                     <WorkoutPlanner 
                       data={data}
+                      draftWorkouts={draftWorkouts}
                       onUpdatePlanner={handleUpdateWorkoutPlanner}
-                      onLogWorkout={handleLogWorkout}
                       onStartWorkout={(workout) => {
                         // Logic to start workout from planner
                         setWorkoutSubSection('tracker');
@@ -491,6 +547,8 @@ export default function App() {
                         // For now, let's just navigate. WorkoutTracker shows the list.
                       }}
                       onImportWorkouts={handleImportWorkouts}
+                      onDraftWorkouts={handleDraftWorkouts}
+                      onClearDraft={handleClearWorkoutDraft}
                     />
                   </motion.div>
                 )}
@@ -518,9 +576,11 @@ export default function App() {
                     exit={{ opacity: 0, y: -10 }}
                   >
                     <WorkoutGenerator 
-                      data={data} 
-                      onSaveWorkout={handleSaveWorkout}
-                      onSaveWeeklyPlan={handleImportWorkouts}
+                      data={data}
+                      onSaveWorkout={(workout) => {
+                        setData(prev => ({ ...prev, workouts: [...prev.workouts, workout] }));
+                      }}
+                      onDraftWorkouts={handleDraftWorkouts}
                     />
                   </motion.div>
                 )}
@@ -546,10 +606,6 @@ export default function App() {
                 fullData={data}
                 onImportData={handleImportData}
               />
-              
-              <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
-                <HistoryCalendar history={data.history || {}} userProfile={data.profile || null} todayData={{ meals: data.meals, waterMl: data.waterMl, workoutLogs: data.workoutLogs, cardioLogs: data.cardioLogs, steps: data.steps }} />
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -587,6 +643,12 @@ export default function App() {
             onClick={() => setActiveSection('workout')}
             icon={<Dumbbell className="w-5 h-5" />}
             label="Treino"
+          />
+          <NavButton 
+            active={activeSection === 'history'} 
+            onClick={() => setActiveSection('history')}
+            icon={<History className="w-5 h-5" />}
+            label="Histórico"
           />
           <NavButton 
             active={activeSection === 'profile'} 

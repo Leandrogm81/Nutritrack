@@ -90,8 +90,6 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
   const selectedData = selectedDate ? (selectedDate === new Date().toISOString().split('T')[0] ? todayData : history[selectedDate]) : null;
 
   const exportPDF = () => {
-    if (!userProfile) return;
-    
     const doc = new jsPDF();
     const todayStr = new Date().toLocaleDateString('pt-BR');
     
@@ -99,7 +97,7 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
     doc.text('Relatório Nutricional - NutriTrack', 14, 22);
     
     doc.setFontSize(12);
-    doc.text(`Paciente: ${userProfile.name || 'Não informado'}`, 14, 32);
+    doc.text(`Paciente: ${userProfile?.name || 'Não informado'}`, 14, 32);
     doc.text(`Data de Geração: ${todayStr}`, 14, 38);
     
     // Get last 7 days
@@ -113,15 +111,19 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
     const tableData = last7Days.map(date => {
       const isToday = new Date().toISOString().split('T')[0] === date;
       const data = isToday ? todayData : history[date];
-      if (!data || (data.meals.length === 0 && data.waterMl === 0 && (data.cardioLogs || []).length === 0 && !data.steps)) {
+      const meals = data?.meals || [];
+      const cardioLogs = data?.cardioLogs || [];
+      const waterMl = data?.waterMl || 0;
+      const steps = data?.steps || 0;
+      if (!data || (meals.length === 0 && waterMl === 0 && cardioLogs.length === 0 && steps === 0)) {
         return [date.split('-').reverse().join('/'), 'Sem dados', '-', '-', '-', '-', '-', '-'];
       }
       
-      const cals = data.meals.reduce((sum, m) => sum + m.calories, 0);
-      const prot = data.meals.reduce((sum, m) => sum + m.protein, 0);
-      const carbs = data.meals.reduce((sum, m) => sum + m.carbs, 0);
-      const fats = data.meals.reduce((sum, m) => sum + m.fats, 0);
-      const cardioCals = (data.cardioLogs || []).reduce((sum, log) => sum + (log.calories || 0), 0);
+      const cals = meals.reduce((sum, m) => sum + (m.calories || 0), 0);
+      const prot = meals.reduce((sum, m) => sum + (m.protein || 0), 0);
+      const carbs = meals.reduce((sum, m) => sum + (m.carbs || 0), 0);
+      const fats = meals.reduce((sum, m) => sum + (m.fats || 0), 0);
+      const cardioCals = cardioLogs.reduce((sum, log) => sum + (log.calories || 0), 0);
       
       let goalCals = 2000;
       if (userProfile && userProfile.goal === 'lose') goalCals = 1800;
@@ -164,17 +166,21 @@ export default function HistoryCalendar({ history, userProfile, todayData }: His
     last7Days.forEach(date => {
       const isToday = new Date().toISOString().split('T')[0] === date;
       const data = isToday ? todayData : history[date];
-      const cardioCals = (data?.cardioLogs || []).reduce((sum, log) => sum + (log.calories || 0), 0);
+      const meals = data?.meals || [];
+      const cardioLogs = data?.cardioLogs || [];
+      const waterMl = data?.waterMl || 0;
+      const steps = data?.steps || 0;
+      const cardioCals = cardioLogs.reduce((sum, log) => sum + (log.calories || 0), 0);
       
-      if (!data || (data.meals.length === 0 && data.waterMl === 0 && cardioCals === 0 && !data.steps)) {
+      if (!data || (meals.length === 0 && waterMl === 0 && cardioCals === 0 && steps === 0)) {
         csvRows.push([date.split('-').reverse().join('/'), 'Sem dados', '-', '-', '-', '-', '-', '-', '-'].join(','));
         return;
       }
 
-      if (data.meals.length === 0) {
-        csvRows.push([date.split('-').reverse().join('/'), 'Nenhuma refeicao', '-', '-', '-', '-', data.waterMl, data.steps || 0, cardioCals].join(','));
+      if (meals.length === 0) {
+        csvRows.push([date.split('-').reverse().join('/'), 'Nenhuma refeicao', '-', '-', '-', '-', waterMl, steps, cardioCals].join(','));
       } else {
-        data.meals.forEach((meal, index) => {
+        meals.forEach((meal, index) => {
           csvRows.push([
             index === 0 ? date.split('-').reverse().join('/') : '',
             meal.name,

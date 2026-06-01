@@ -3,13 +3,15 @@ import { Sparkles, Loader2, Calendar, CheckCircle2, AlertCircle } from 'lucide-r
 import { DailyData, PlannedMeal } from '../types';
 import { geminiService } from '../services/geminiService';
 import { motion } from 'motion/react';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface DietGeneratorProps {
   data: DailyData;
-  onUpdatePlanner: (meals: PlannedMeal[]) => void;
+  onDraftPlanner: (meals: PlannedMeal[]) => void;
 }
 
-export default function DietGenerator({ data, onUpdatePlanner }: DietGeneratorProps) {
+export default function DietGenerator({ data, onDraftPlanner }: DietGeneratorProps) {
+  const isOnline = useOnlineStatus();
   const [isGenerating, setIsGenerating] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export default function DietGenerator({ data, onUpdatePlanner }: DietGeneratorPr
         day: meal.day
       }));
 
-      onUpdatePlanner(newPlannedMeals);
+      onDraftPlanner(newPlannedMeals);
       setSuccess(true);
       
       setTimeout(() => {
@@ -85,7 +87,7 @@ export default function DietGenerator({ data, onUpdatePlanner }: DietGeneratorPr
           <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Dieta gerada com sucesso!</p>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Seu Planejador Semanal foi atualizado para todos os dias da semana.</p>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Um rascunho foi gerado no seu Planejador Semanal. Vá até lá para revisar e confirmar!</p>
           </div>
         </motion.div>
       )}
@@ -106,14 +108,14 @@ export default function DietGenerator({ data, onUpdatePlanner }: DietGeneratorPr
           </li>
           <li className="flex items-start gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
-            As refeições serão adicionadas automaticamente ao seu Planejador.
+            As refeições serão adicionadas como um rascunho ao seu Planejador para sua revisão.
           </li>
         </ul>
       </div>
 
       <button
         onClick={handleGenerate}
-        disabled={isGenerating}
+        disabled={isGenerating || !isOnline}
         className="w-full bg-emerald-500 text-white font-bold py-5 rounded-2xl hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest text-sm"
       >
         {isGenerating ? (
@@ -124,7 +126,7 @@ export default function DietGenerator({ data, onUpdatePlanner }: DietGeneratorPr
         ) : (
           <>
             <Sparkles className="w-5 h-5" />
-            Gerar Dieta da Semana
+            {isOnline ? 'Gerar Dieta da Semana' : 'IA Indisponível (Offline)'}
           </>
         )}
       </button>

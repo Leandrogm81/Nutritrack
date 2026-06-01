@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { UserProfile, DailyData } from '../types';
-import { User, Scale, Ruler, Calendar, Activity, Target, Save, CheckCircle2, Utensils, Download, Upload } from 'lucide-react';
+import { User, Scale, Ruler, Calendar, Activity, Target, Save, CheckCircle2, Utensils, Download, Upload, Shield } from 'lucide-react';
 import { motion } from 'motion/react';
+import { createBackupString, parseAndValidateBackup } from '../utils/backup';
 
 interface UserProfileFormProps {
   profile?: UserProfile;
@@ -118,7 +119,7 @@ export default function UserProfileForm({ profile, onSave, fullData, onImportDat
   };
 
   const handleExport = () => {
-    const dataStr = JSON.stringify(fullData, null, 2);
+    const dataStr = createBackupString(fullData);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     
     const exportFileDefaultName = `nutritrack_backup_${new Date().toISOString().split('T')[0]}.json`;
@@ -135,22 +136,21 @@ export default function UserProfileForm({ profile, onSave, fullData, onImportDat
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      try {
-        const importedData = JSON.parse(e.target?.result as string);
-        // Basic validation
-        if (importedData && typeof importedData === 'object' && importedData.goals) {
-          if (window.confirm('Isso irá substituir todos os seus dados atuais. Deseja continuar?')) {
-            onImportData(importedData);
-            alert('Dados importados com sucesso!');
-          }
-        } else {
-          alert('Arquivo de backup inválido.');
+      const result = parseAndValidateBackup(e.target?.result as string);
+      
+      if (result.success) {
+        if (window.confirm('Isso irá substituir todos os seus dados atuais pelo backup. Deseja continuar?')) {
+          onImportData(result.data);
+          alert('Dados importados com sucesso!');
         }
-      } catch (err) {
-        alert('Erro ao ler o arquivo de backup.');
+      } else {
+        alert(`Erro na importação do backup: ${(result as {success: false, error: string}).error}`);
       }
     };
     reader.readAsText(file);
+    
+    // Clear the input so the same file can be selected again
+    event.target.value = '';
   };
 
   return (
@@ -491,6 +491,18 @@ export default function UserProfileForm({ profile, onSave, fullData, onImportDat
                 </div>
               </div>
             )}
+          </div>
+          
+          <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
+            <div className="flex items-start gap-4 p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl border border-emerald-100 dark:border-emerald-500/20">
+              <Shield className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+              <div>
+                <h4 className="text-sm font-bold text-zinc-900 dark:text-white mb-1">Privacidade Local e IA</h4>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  Seus dados de saúde ficam salvos apenas neste dispositivo. Apenas as descrições e as imagens que você envia explicitamente à Inteligência Artificial saem temporariamente do aparelho para processamento, mas nunca são armazenadas.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </form>

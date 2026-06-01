@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { DailyData, PlannedWorkout, Workout, WorkoutLog } from '../types';
-import { Calendar, Plus, Trash2, Dumbbell, ChevronRight, ChevronLeft, CheckCircle2, Wand2, Loader2, Play } from 'lucide-react';
+import { DailyData, PlannedWorkout, Workout, WorkoutLog, WorkoutDraft } from '../types';
+import { Calendar, Plus, Trash2, Dumbbell, ChevronRight, ChevronLeft, CheckCircle2, Wand2, Loader2, Play, Edit2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { geminiService } from '../services/geminiService';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface WorkoutPlannerProps {
   data: DailyData;
+  draftWorkouts: WorkoutDraft | null;
   onUpdatePlanner: (planned: PlannedWorkout[]) => void;
   onStartWorkout: (workout: Workout) => void;
-  onLogWorkout: (log: WorkoutLog) => void;
   onImportWorkouts: (workouts: Workout[], planned: PlannedWorkout[]) => void;
+  onDraftWorkouts: (draft: WorkoutDraft) => void;
+  onClearDraft: () => void;
 }
 
 const DAYS = [
@@ -22,9 +25,11 @@ const DAYS = [
   { id: 'dom', label: 'Domingo' }
 ];
 
-export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, onLogWorkout, onImportWorkouts }: WorkoutPlannerProps) {
+export default function WorkoutPlanner({ data, draftWorkouts, onUpdatePlanner, onStartWorkout, onImportWorkouts, onDraftWorkouts, onClearDraft }: WorkoutPlannerProps) {
+  const isOnline = useOnlineStatus();
   const [selectedDay, setSelectedDay] = useState('seg');
   const [isAdding, setIsAdding] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [isPastingWorkout, setIsPastingWorkout] = useState(false);
   const [workoutText, setWorkoutText] = useState('');
@@ -33,11 +38,31 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
   const [selectedWorkoutId, setSelectedWorkoutId] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+  const activePlannedWorkouts = draftWorkouts ? draftWorkouts.plannedWorkouts : data.plannedWorkouts;
+  const activeWorkouts = draftWorkouts ? [...data.workouts, ...draftWorkouts.workouts] : data.workouts;
+
+  const handleUpdateActivePlanner = (newPlanned: PlannedWorkout[]) => {
+    if (draftWorkouts) {
+      onDraftWorkouts({ ...draftWorkouts, plannedWorkouts: newPlanned });
+    } else {
+      onUpdatePlanner(newPlanned);
+    }
+  };
+
   const handleClearAll = () => {
-    onUpdatePlanner([]);
+    handleUpdateActivePlanner([]);
     setIsClearing(false);
     setMessage({ type: 'success', text: 'Planejamento limpo com sucesso!' });
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleConfirmDraft = () => {
+    if (draftWorkouts) {
+      onImportWorkouts(draftWorkouts.workouts, draftWorkouts.plannedWorkouts);
+      onClearDraft();
+      setMessage({ type: 'success', text: 'Plano de treino confirmado e salvo!' });
+      setTimeout(() => setMessage(null), 3000);
+    }
   };
 
   const handlePasteWorkout = async (e: React.FormEvent) => {
@@ -52,8 +77,8 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
         throw new Error("Nenhum treino encontrado no texto.");
       }
 
-      onImportWorkouts(workouts, plannedWorkouts);
-      setMessage({ type: 'success', text: 'Treinos importados com sucesso!' });
+      onDraftWorkouts({ workouts, plannedWorkouts });
+      setMessage({ type: 'success', text: 'Rascunho gerado! Revise antes de confirmar.' });
       setIsPastingWorkout(false);
       setWorkoutText('');
       setTimeout(() => setMessage(null), 3000);
@@ -70,17 +95,34 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
     e.preventDefault();
     if (!selectedWorkoutId) return;
 
-    const id = Math.random().toString(36).substring(2, 9);
-    onUpdatePlanner([...data.plannedWorkouts, { id, workoutId: selectedWorkoutId, day: selectedDay }]);
+    if (editingPlanId) {
+      handleUpdateActivePlanner(activePlannedWorkouts.map(w => 
+        w.id === editingPlanId 
+          ? { ...w, workoutId: selectedWorkoutId, day: selectedDay }
+          : w
+      ));
+      setEditingPlanId(null);
+    } else {
+      const id = Math.random().toString(36).substring(2, 9);
+      handleUpdateActivePlanner([...activePlannedWorkouts, { id, workoutId: selectedWorkoutId, day: selectedDay }]);
+    }
+    
     setIsAdding(false);
     setSelectedWorkoutId('');
   };
 
-  const handleRemoveWorkout = (id: string) => {
-    onUpdatePlanner(data.plannedWorkouts.filter(w => w.id !== id));
+  const openEditModal = (pw: PlannedWorkout) => {
+    setSelectedDay(pw.day);
+    setSelectedWorkoutId(pw.workoutId);
+    setEditingPlanId(pw.id);
+    setIsAdding(true);
   };
 
-  const dayWorkouts = data.plannedWorkouts.filter(w => w.day === selectedDay);
+  const handleRemoveWorkout = (id: string) => {
+    handleUpdateActivePlanner(activePlannedWorkouts.filter(w => w.id !== id));
+  };
+
+  const dayWorkouts = activePlannedWorkouts.filter(w => w.day === selectedDay);
 
   return (
     <div className="space-y-8">
@@ -90,7 +132,7 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
           <p className="text-zinc-500 dark:text-zinc-400">Organize seus treinos da semana.</p>
         </div>
         <div className="flex items-center gap-2">
-          {data.plannedWorkouts && data.plannedWorkouts.length > 0 && (
+          {activePlannedWorkouts && activePlannedWorkouts.length > 0 && !draftWorkouts && (
             <button
               onClick={() => setIsClearing(true)}
               className="p-4 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl hover:scale-105 transition-all"
@@ -101,13 +143,19 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
           )}
           <button
             onClick={() => setIsPastingWorkout(true)}
-            className="p-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-2xl hover:scale-105 transition-all"
-            title="Importar treino por texto (IA)"
+            disabled={!isOnline}
+            className={`p-4 rounded-2xl transition-all ${!isOnline ? 'bg-zinc-100/50 text-zinc-400 cursor-not-allowed' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:scale-105'}`}
+            title={isOnline ? "Importar treino por texto (IA)" : "IA Offline"}
           >
             <Wand2 className="w-6 h-6" />
           </button>
           <button
-            onClick={() => setIsAdding(true)}
+            onClick={() => {
+              setEditingPlanId(null);
+              setSelectedWorkoutId('');
+              setSelectedDay(selectedDay);
+              setIsAdding(true);
+            }}
             className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all"
             title="Agendar treino"
           >
@@ -134,6 +182,40 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
         )}
       </AnimatePresence>
 
+      {/* Draft Banner */}
+      {draftWorkouts && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 dark:bg-amber-500/10 border-2 border-amber-200 dark:border-amber-500/20 p-5 sm:p-6 rounded-[2rem] flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm"
+        >
+          <div>
+            <h3 className="text-lg font-bold text-amber-700 dark:text-amber-500 flex items-center gap-2">
+              <Wand2 className="w-5 h-5" />
+              Revisão de Treinos Gerados
+            </h3>
+            <p className="text-sm text-amber-600/80 dark:text-amber-400/80 mt-1">
+              Este é apenas um rascunho. Revise os treinos abaixo e confirme para salvar no seu plano oficial.
+            </p>
+          </div>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <button
+              onClick={onClearDraft}
+              className="flex-1 sm:flex-none px-6 py-3 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold rounded-2xl hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors border border-amber-100 dark:border-amber-500/10 shadow-sm"
+            >
+              Descartar
+            </button>
+            <button
+              onClick={handleConfirmDraft}
+              className="flex-1 sm:flex-none px-6 py-3 bg-amber-500 text-white font-bold rounded-2xl hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              Confirmar
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {/* Day Selector */}
       <div className="flex gap-3 overflow-x-auto pb-6 no-scrollbar -mx-4 px-4">
         {DAYS.map((day) => (
@@ -155,7 +237,7 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
       <div className="space-y-6">
         {dayWorkouts.length > 0 ? (
           dayWorkouts.map((pw) => {
-            const workout = data.workouts.find(w => w.id === pw.workoutId);
+            const workout = activeWorkouts.find(w => w.id === pw.workoutId);
             if (!workout) return null;
             return (
               <div 
@@ -179,31 +261,17 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
                     <button 
                       onClick={() => onStartWorkout(workout)}
                       className="p-3 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-2xl transition-all flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"
-                      title="Iniciar este treino agora com cronômetro"
+                      title="Ir para aba de execução de treino"
                     >
                       <Play className="w-5 h-5 fill-current" />
                       <span className="hidden sm:inline">Treinar</span>
                     </button>
                     <button 
-                      onClick={() => {
-                        const log: WorkoutLog = {
-                          id: Math.random().toString(36).substring(2, 9),
-                          workoutId: workout.id,
-                          workoutName: workout.name,
-                          date: new Date().toISOString().split('T')[0],
-                          exercises: workout.exercises.map(ex => ({ ...ex })),
-                          duration: workout.duration,
-                          mood: 'good'
-                        };
-                        onLogWorkout(log);
-                        setMessage({ type: 'success', text: 'Treino registrado com sucesso!' });
-                        setTimeout(() => setMessage(null), 3000);
-                      }}
-                      className="p-3 text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-2xl transition-all flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"
-                      title="Registrar treino concluído sem cronômetro"
+                      onClick={() => openEditModal(pw)}
+                      className="p-3 text-zinc-300 dark:text-zinc-600 hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-2xl transition-all"
+                      title="Editar agendamento"
                     >
-                      <CheckCircle2 className="w-5 h-5" />
-                      <span className="hidden sm:inline">Registrar</span>
+                      <Edit2 className="w-5 h-5" />
                     </button>
                     <button 
                       onClick={() => handleRemoveWorkout(pw.id)}
@@ -247,7 +315,7 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               className="relative bg-white dark:bg-zinc-900 w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl"
             >
-              <h3 className="text-xl font-bold mb-6 dark:text-white">Agendar Treino</h3>
+              <h3 className="text-xl font-bold mb-6 dark:text-white">{editingPlanId ? 'Editar Agendamento' : 'Agendar Treino'}</h3>
               <form onSubmit={handleAddWorkout} className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-400 uppercase">Selecione o Treino</label>
@@ -258,7 +326,7 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
                     required
                   >
                     <option value="">Escolha um treino...</option>
-                    {data.workouts.map(w => (
+                    {activeWorkouts.map(w => (
                       <option key={w.id} value={w.id}>{w.name}</option>
                     ))}
                   </select>
@@ -280,7 +348,7 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
                   disabled={!selectedWorkoutId}
                   className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl hover:bg-emerald-600 transition-all mt-4 shadow-lg shadow-emerald-500/20 disabled:opacity-50"
                 >
-                  Agendar para {DAYS.find(d => d.id === selectedDay)?.label}
+                  {editingPlanId ? 'Salvar Alterações' : `Agendar para ${DAYS.find(d => d.id === selectedDay)?.label}`}
                 </button>
               </form>
             </motion.div>
@@ -368,7 +436,7 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
                 
                 <button
                   type="submit"
-                  disabled={isGenerating || !workoutText.trim()}
+                  disabled={isGenerating || !workoutText.trim() || !isOnline}
                   className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl hover:bg-emerald-600 transition-all mt-4 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isGenerating ? (
@@ -377,7 +445,7 @@ export default function WorkoutPlanner({ data, onUpdatePlanner, onStartWorkout, 
                       Analisando treino...
                     </>
                   ) : (
-                    'Importar Treino'
+                    isOnline ? 'Importar Treino' : 'IA Offline'
                   )}
                 </button>
               </form>

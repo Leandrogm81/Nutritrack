@@ -3,12 +3,14 @@ import { ChefHat, Loader2, ArrowRight, UtensilsCrossed } from 'lucide-react';
 import { DailyData } from '../types';
 import { geminiService } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface RecipeSuggestionsProps {
   data: DailyData;
 }
 
 export default function RecipeSuggestions({ data }: RecipeSuggestionsProps) {
+  const isOnline = useOnlineStatus();
   const [recipes, setRecipes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -55,7 +57,8 @@ export default function RecipeSuggestions({ data }: RecipeSuggestionsProps) {
         {!isLoading && (
           <button 
             onClick={fetchRecipes}
-            className="text-xs font-bold text-amber-500 uppercase tracking-widest hover:underline"
+            disabled={!isOnline}
+            className="text-xs font-bold text-amber-500 uppercase tracking-widest hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {hasLoaded ? 'Atualizar' : 'Sugerir'}
           </button>
@@ -112,12 +115,15 @@ export default function RecipeSuggestions({ data }: RecipeSuggestionsProps) {
         ) : (
           <button 
             onClick={fetchRecipes}
-            className="w-full bg-white dark:bg-zinc-900 p-12 rounded-[2.5rem] border-2 border-dashed border-zinc-200 dark:border-zinc-800 flex flex-col items-center gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all group shadow-sm"
+            disabled={!isOnline}
+            className="w-full bg-white dark:bg-zinc-900 p-12 rounded-[2.5rem] border-2 border-dashed border-zinc-200 dark:border-zinc-800 flex flex-col items-center gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all group shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-3xl group-hover:scale-110 transition-transform">
               <UtensilsCrossed className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />
             </div>
-            <span className="text-sm font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Clique para receber sugestões personalizadas</span>
+            <span className="text-sm font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+              {isOnline ? 'Clique para receber sugestões personalizadas' : 'IA Offline'}
+            </span>
           </button>
         )}
       </AnimatePresence>

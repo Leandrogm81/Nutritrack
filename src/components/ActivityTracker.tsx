@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CardioLog } from '../types';
+import { validateSteps, validateCardio } from '../utils/activity';
 import { Activity, Flame, Footprints, HeartPulse, Plus, Save, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -11,52 +12,6 @@ interface ActivityTrackerProps {
   onRemoveCardio: (id: string) => void;
 }
 
-const STEP_DATA = [
-  { steps: 4000, kcal: 356 },
-  { steps: 5000, kcal: 445 },
-  { steps: 6000, kcal: 534 },
-  { steps: 7000, kcal: 623 },
-  { steps: 8000, kcal: 712 },
-  { steps: 9000, kcal: 801 },
-  { steps: 10000, kcal: 890 },
-  { steps: 11000, kcal: 979 },
-  { steps: 12000, kcal: 1068 },
-  { steps: 13000, kcal: 1157 },
-  { steps: 14000, kcal: 1246 },
-  { steps: 15000, kcal: 1335 },
-];
-
-export const calculateStepCalories = (steps: number): number => {
-  if (steps <= 0) return 0;
-
-  const previous = [...STEP_DATA].reverse().find((point) => point.steps <= steps);
-  const next = STEP_DATA.find((point) => point.steps > steps);
-
-  if (previous && next) {
-    return previous.kcal + ((steps - previous.steps) * (next.kcal - previous.kcal)) / (next.steps - previous.steps);
-  }
-
-  if (previous) {
-    const beforePrevious = STEP_DATA[STEP_DATA.length - 2];
-    const slope = (previous.kcal - beforePrevious.kcal) / (previous.steps - beforePrevious.steps);
-    return previous.kcal + (steps - previous.steps) * slope;
-  }
-
-  const first = STEP_DATA[0];
-  return (steps / first.steps) * first.kcal;
-};
-
-const parseNumber = (value: string): number => Number.parseFloat(value.replace(',', '.')) || 0;
-
-const estimateCardioCalories = (duration: number, intensity: CardioLog['intensity']) => {
-  const rateByIntensity = {
-    low: 4,
-    medium: 7,
-    high: 10,
-  };
-
-  return Math.round(duration * rateByIntensity[intensity]);
-};
 
 const intensityLabels: Record<CardioLog['intensity'], string> = {
   low: 'Baixa',
@@ -76,7 +31,6 @@ export default function ActivityTracker({ steps, cardioLogs, onSaveSteps, onAddC
     setStepInput(steps ? String(steps) : '');
   }, [steps]);
 
-  const stepCalories = Math.round(calculateStepCalories(steps || 0));
   const cardioCalories = useMemo(
     () => cardioLogs.reduce((sum, log) => sum + (log.calories || 0), 0),
     [cardioLogs]
@@ -85,11 +39,10 @@ export default function ActivityTracker({ steps, cardioLogs, onSaveSteps, onAddC
     () => cardioLogs.reduce((sum, log) => sum + (log.duration || 0), 0),
     [cardioLogs]
   );
-  const estimatedCalories = estimateCardioCalories(parseNumber(duration), intensity);
 
   const handleStepSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    onSaveSteps(parseNumber(stepInput));
+    onSaveSteps(validateSteps(stepInput));
   };
 
   const handleStepShortcut = (amount: number) => {
@@ -101,16 +54,10 @@ export default function ActivityTracker({ steps, cardioLogs, onSaveSteps, onAddC
   const handleCardioSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
-    const parsedDuration = parseNumber(duration);
-    if (!type.trim() || parsedDuration <= 0) return;
+    const validData = validateCardio(type, duration, intensity, calories, speed);
+    if (!validData) return;
 
-    onAddCardio({
-      type: type.trim(),
-      duration: parsedDuration,
-      intensity,
-      calories: parseNumber(calories) || estimatedCalories,
-      speed: speed.trim() ? parseNumber(speed) : undefined,
-    });
+    onAddCardio(validData);
 
     setType('');
     setDuration('30');
@@ -128,7 +75,7 @@ export default function ActivityTracker({ steps, cardioLogs, onSaveSteps, onAddC
 
       <section className="grid grid-cols-2 gap-3">
         <SummaryTile icon={<Footprints className="w-5 h-5" />} label="Passos" value={steps.toLocaleString('pt-BR')} tone="emerald" />
-        <SummaryTile icon={<Flame className="w-5 h-5" />} label="Gasto" value={`${(stepCalories + cardioCalories).toLocaleString('pt-BR')} kcal`} tone="rose" />
+        <SummaryTile icon={<Flame className="w-5 h-5" />} label="Gasto Cardio" value={`${cardioCalories.toLocaleString('pt-BR')} kcal`} tone="rose" />
         <SummaryTile icon={<HeartPulse className="w-5 h-5" />} label="Cardio" value={`${cardioMinutes} min`} tone="blue" />
         <SummaryTile icon={<Activity className="w-5 h-5" />} label="Sessoes" value={String(cardioLogs.length)} tone="amber" />
       </section>
@@ -137,7 +84,7 @@ export default function ActivityTracker({ steps, cardioLogs, onSaveSteps, onAddC
         <div className="flex items-center justify-between gap-4">
           <div>
             <h3 className="font-bold text-zinc-900 dark:text-white">Passos do Dia</h3>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">{stepCalories.toLocaleString('pt-BR')} kcal estimadas</p>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Contabilize seus passos (volume)</p>
           </div>
           <Footprints className="w-7 h-7 text-emerald-500" />
         </div>
@@ -178,7 +125,7 @@ export default function ActivityTracker({ steps, cardioLogs, onSaveSteps, onAddC
         <div className="flex items-center justify-between gap-4">
           <div>
             <h3 className="font-bold text-zinc-900 dark:text-white">Cardio</h3>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Estimativa atual: {estimatedCalories} kcal</p>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Registre sua atividade aeróbica</p>
           </div>
           <HeartPulse className="w-7 h-7 text-rose-500" />
         </div>

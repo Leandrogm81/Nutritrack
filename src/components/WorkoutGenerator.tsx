@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { DailyData, Workout, Exercise, PlannedWorkout } from '../types';
+import { DailyData, Workout, PlannedWorkout, WorkoutDraft } from '../types';
 import { Dumbbell, Sparkles, Loader2, Plus, Trash2, Save, ChevronRight, ChevronDown, Play, Wand2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { geminiService } from '../services/geminiService';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface WorkoutGeneratorProps {
   data: DailyData;
   onSaveWorkout: (workout: Workout) => void;
-  onSaveWeeklyPlan: (workouts: Workout[], planned: PlannedWorkout[]) => void;
+  onDraftWorkouts: (draft: WorkoutDraft) => void;
 }
 
-export default function WorkoutGenerator({ data, onSaveWorkout, onSaveWeeklyPlan }: WorkoutGeneratorProps) {
+export default function WorkoutGenerator({ data, onSaveWorkout, onDraftWorkouts }: WorkoutGeneratorProps) {
+  const isOnline = useOnlineStatus();
   const [loading, setLoading] = useState(false);
-  const [generatedPlan, setGeneratedPlan] = useState<{ workouts: Workout[], plannedWorkouts: PlannedWorkout[] } | null>(null);
   const [prompt, setPrompt] = useState('');
   const [isPastingWorkout, setIsPastingWorkout] = useState(false);
   const [workoutText, setWorkoutText] = useState('');
@@ -23,7 +24,8 @@ export default function WorkoutGenerator({ data, onSaveWorkout, onSaveWeeklyPlan
     setLoading(true);
     try {
       const plan = await geminiService.generateWeeklyWorkoutPlan(data, prompt);
-      setGeneratedPlan(plan);
+      onDraftWorkouts(plan);
+      setPrompt('');
     } catch (error) {
       console.error("Erro ao gerar treino:", error);
       setMessage({ type: 'error', text: "Não foi possível gerar o treino agora. Tente novamente." });
@@ -40,8 +42,7 @@ export default function WorkoutGenerator({ data, onSaveWorkout, onSaveWeeklyPlan
     setLoading(true);
     try {
       const plan = await geminiService.parseWorkoutText(workoutText);
-      onSaveWeeklyPlan(plan.workouts, plan.plannedWorkouts);
-      setMessage({ type: 'success', text: 'Treino importado com sucesso!' });
+      onDraftWorkouts(plan);
       setIsPastingWorkout(false);
       setWorkoutText('');
       setTimeout(() => setMessage(null), 3000);
@@ -87,7 +88,8 @@ export default function WorkoutGenerator({ data, onSaveWorkout, onSaveWeeklyPlan
           </div>
           <button
             onClick={() => setIsPastingWorkout(true)}
-            className="p-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-xl hover:scale-105 transition-all"
+            disabled={!isOnline}
+            className={`p-3 rounded-xl transition-all ${!isOnline ? 'bg-zinc-100/50 text-zinc-400 cursor-not-allowed' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:scale-105'}`}
             title="Importar treino por texto"
           >
             <Wand2 className="w-5 h-5" />
@@ -104,7 +106,7 @@ export default function WorkoutGenerator({ data, onSaveWorkout, onSaveWeeklyPlan
           
           <button
             onClick={generateWorkout}
-            disabled={loading || !prompt.trim()}
+            disabled={loading || !prompt.trim() || !isOnline}
             className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50"
           >
             {loading ? (
@@ -112,67 +114,14 @@ export default function WorkoutGenerator({ data, onSaveWorkout, onSaveWeeklyPlan
             ) : (
               <>
                 <Dumbbell className="w-5 h-5" />
-                Gerar Plano de Treino
+                {isOnline ? 'Gerar Plano de Treino' : 'IA Offline'}
               </>
             )}
           </button>
         </div>
       </div>
 
-      <AnimatePresence>
-        {generatedPlan && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            <div className="flex items-center justify-between px-4">
-              <h4 className="text-xl font-bold text-zinc-900 dark:text-white">Plano Gerado</h4>
-              <p className="text-sm text-zinc-500">{generatedPlan.workouts.length} treinos diferentes</p>
-            </div>
 
-            <div className="space-y-4">
-              {generatedPlan.workouts.map((workout) => (
-                <div key={workout.id} className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 border border-black/5 dark:border-white/5 shadow-sm">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h5 className="font-bold text-zinc-900 dark:text-white">{workout.name}</h5>
-                      <p className="text-xs text-zinc-500">{workout.description}</p>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-1 bg-emerald-100 dark:bg-emerald-500/10 rounded-lg text-emerald-600 uppercase">
-                      {workout.type}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    {workout.exercises.slice(0, 3).map((ex) => (
-                      <div key={ex.id} className="flex justify-between text-xs">
-                        <span className="text-zinc-600 dark:text-zinc-400">{ex.name}</span>
-                        <span className="font-bold text-zinc-900 dark:text-white">{ex.sets}x{ex.reps}</span>
-                      </div>
-                    ))}
-                    {workout.exercises.length > 3 && (
-                      <p className="text-[10px] text-zinc-400 italic">...e mais {workout.exercises.length - 3} exercícios</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => {
-                onSaveWeeklyPlan(generatedPlan.workouts, generatedPlan.plannedWorkouts);
-                setGeneratedPlan(null);
-                setPrompt('');
-              }}
-              className="w-full py-4 bg-zinc-900 dark:bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] transition-all shadow-xl shadow-zinc-900/20 dark:shadow-emerald-500/20"
-            >
-              <Save className="w-5 h-5" />
-              Salvar Plano Completo na Agenda
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Import Modal */}
       <AnimatePresence>
@@ -211,7 +160,7 @@ export default function WorkoutGenerator({ data, onSaveWorkout, onSaveWeeklyPlan
                 
                 <button
                   type="submit"
-                  disabled={loading || !workoutText.trim()}
+                  disabled={loading || !workoutText.trim() || !isOnline}
                   className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl hover:bg-emerald-600 transition-all mt-4 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading ? (
@@ -220,7 +169,7 @@ export default function WorkoutGenerator({ data, onSaveWorkout, onSaveWeeklyPlan
                       Analisando treino...
                     </>
                   ) : (
-                    'Importar Treino'
+                    isOnline ? 'Importar Treino' : 'IA Offline'
                   )}
                 </button>
               </form>

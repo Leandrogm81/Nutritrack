@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { DailyData, PlannedMeal, Meal } from '../types';
-import { Calendar, Plus, Trash2, Clock, Utensils, ChevronRight, ChevronLeft, CheckCircle2, Wand2, Loader2 } from 'lucide-react';
+import { Calendar, Plus, Trash2, Clock, Utensils, ChevronRight, ChevronLeft, CheckCircle2, Wand2, Loader2, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { geminiService } from '../services/geminiService';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface WeeklyPlannerProps {
   data: DailyData;
+  draftMeals: PlannedMeal[] | null;
   onUpdatePlanner: (meals: PlannedMeal[]) => void;
+  onDraftPlanner: (meals: PlannedMeal[]) => void;
+  onClearDraft: () => void;
   onLogMeal: (meal: Omit<Meal, 'id' | 'timestamp'>) => void;
 }
 
@@ -27,20 +31,22 @@ const MEAL_TYPES = [
   { id: 'jantar', label: 'Jantar', icon: '🥗' }
 ];
 
-export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: WeeklyPlannerProps) {
+export default function WeeklyPlanner({ data, draftMeals, onUpdatePlanner, onDraftPlanner, onClearDraft, onLogMeal }: WeeklyPlannerProps) {
+  const isOnline = useOnlineStatus();
   const getCurrentDayId = () => {
     const days = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
     return days[new Date().getDay()];
   };
 
   const [selectedDay, setSelectedDay] = useState(getCurrentDayId());
-  const [isAdding, setIsAdding] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMealId, setEditingMealId] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [isPastingDiet, setIsPastingDiet] = useState(false);
   const [dietText, setDietText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   
-  const [newMeal, setNewMeal] = useState<Omit<PlannedMeal, 'id'>>({
+  const defaultMealState: Omit<PlannedMeal, 'id'> = {
     name: '',
     calories: 0,
     protein: 0,
@@ -48,7 +54,8 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
     fats: 0,
     day: 'seg',
     type: 'cafe'
-  });
+  };
+  const [mealFormState, setMealFormState] = useState<Omit<PlannedMeal, 'id'>>(defaultMealState);
   
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -76,8 +83,8 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
         id: Math.random().toString(36).substring(2, 9)
       }));
 
-      onUpdatePlanner(newMeals);
-      setMessage({ type: 'success', text: 'Dieta importada com sucesso!' });
+      onDraftPlanner(newMeals);
+      setMessage({ type: 'success', text: 'Rascunho gerado! Revise antes de confirmar.' });
       setIsPastingDiet(false);
       setDietText('');
       setTimeout(() => setMessage(null), 3000);
@@ -90,19 +97,68 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
     }
   };
 
-  const handleAddMeal = (e: React.FormEvent) => {
+  const openAddModal = () => {
+    setMealFormState({ ...defaultMealState, day: selectedDay as any });
+    setEditingMealId(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (meal: PlannedMeal) => {
+    setMealFormState({
+      name: meal.name,
+      calories: meal.calories,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fats: meal.fats,
+      day: meal.day,
+      type: meal.type
+    });
+    setEditingMealId(meal.id);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingMealId(null);
+    setMealFormState(defaultMealState);
+  };
+
+  const activeMeals = draftMeals || data.plannedMeals;
+
+  const handleUpdateActiveMeals = (newMeals: PlannedMeal[]) => {
+    if (draftMeals) {
+      onDraftPlanner(newMeals);
+    } else {
+      onUpdatePlanner(newMeals);
+    }
+  };
+
+  const handleSaveMeal = (e: React.FormEvent) => {
     e.preventDefault();
-    const id = Math.random().toString(36).substring(2, 9);
-    onUpdatePlanner([...data.plannedMeals, { ...newMeal, id, day: selectedDay }]);
-    setIsAdding(false);
-    setNewMeal({ ...newMeal, name: '', calories: 0, protein: 0, carbs: 0, fats: 0 });
+    if (editingMealId) {
+      const updatedMeals = activeMeals.map(m => m.id === editingMealId ? { ...mealFormState, id: editingMealId } : m);
+      handleUpdateActiveMeals(updatedMeals);
+    } else {
+      const id = Math.random().toString(36).substring(2, 9);
+      handleUpdateActiveMeals([...activeMeals, { ...mealFormState, id, day: selectedDay as any }]);
+    }
+    closeModal();
   };
 
   const handleRemoveMeal = (id: string) => {
-    onUpdatePlanner(data.plannedMeals.filter(m => m.id !== id));
+    handleUpdateActiveMeals(activeMeals.filter(m => m.id !== id));
   };
 
-  const dayMeals = data.plannedMeals.filter(m => m.day === selectedDay);
+  const handleConfirmDraft = () => {
+    if (draftMeals) {
+      onUpdatePlanner(draftMeals);
+      onClearDraft();
+      setMessage({ type: 'success', text: 'Plano alimentar confirmado e salvo!' });
+      setTimeout(() => setMessage(null), 3000);
+    }
+  };
+
+  const dayMeals = activeMeals.filter(m => m.day === selectedDay);
 
   return (
     <div className="space-y-8">
@@ -112,7 +168,7 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
           <p className="text-zinc-500 dark:text-zinc-400">Organize suas refeições da semana.</p>
         </div>
         <div className="flex items-center gap-2">
-          {data.plannedMeals && data.plannedMeals.length > 0 && (
+          {activeMeals && activeMeals.length > 0 && !draftMeals && (
             <button
               onClick={() => setIsClearing(true)}
               className="p-4 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl hover:scale-105 transition-all"
@@ -123,13 +179,14 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
           )}
           <button
             onClick={() => setIsPastingDiet(true)}
-            className="p-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-2xl hover:scale-105 transition-all"
-            title="Importar dieta por texto (IA)"
+            disabled={!isOnline}
+            className={`p-4 rounded-2xl transition-all ${!isOnline ? 'bg-zinc-100/50 text-zinc-400 cursor-not-allowed' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:scale-105'}`}
+            title={isOnline ? "Importar dieta por texto (IA)" : "IA Offline"}
           >
             <Wand2 className="w-6 h-6" />
           </button>
           <button
-            onClick={() => setIsAdding(true)}
+            onClick={openAddModal}
             className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all"
             title="Adicionar refeição"
           >
@@ -155,6 +212,40 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Draft Banner */}
+      {draftMeals && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 dark:bg-amber-500/10 border-2 border-amber-200 dark:border-amber-500/20 p-5 sm:p-6 rounded-[2rem] flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm"
+        >
+          <div>
+            <h3 className="text-lg font-bold text-amber-700 dark:text-amber-500 flex items-center gap-2">
+              <Wand2 className="w-5 h-5" />
+              Revisão de Plano Gerado
+            </h3>
+            <p className="text-sm text-amber-600/80 dark:text-amber-400/80 mt-1">
+              Este é apenas um rascunho. Revise as refeições abaixo e confirme para salvar no seu plano oficial.
+            </p>
+          </div>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <button
+              onClick={onClearDraft}
+              className="flex-1 sm:flex-none px-6 py-3 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold rounded-2xl hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors border border-amber-100 dark:border-amber-500/10 shadow-sm"
+            >
+              Descartar
+            </button>
+            <button
+              onClick={handleConfirmDraft}
+              className="flex-1 sm:flex-none px-6 py-3 bg-amber-500 text-white font-bold rounded-2xl hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              Confirmar
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Day Selector */}
       <div className="flex gap-3 overflow-x-auto pb-6 no-scrollbar -mx-4 px-4">
@@ -210,6 +301,8 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
                             carbs: meal.carbs,
                             fats: meal.fats
                           });
+                          setMessage({ type: 'success', text: `${meal.name} registrado para hoje!` });
+                          setTimeout(() => setMessage(null), 3000);
                         }}
                         className="p-3 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-2xl transition-all flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"
                         title="Registrar no Histórico de Hoje"
@@ -218,8 +311,16 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
                         <span className="hidden sm:inline">Registrar</span>
                       </button>
                       <button 
+                        onClick={() => openEditModal(meal)}
+                        className="p-3 text-zinc-300 dark:text-zinc-600 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-2xl transition-all"
+                        title="Editar"
+                      >
+                        <Pencil className="w-5 h-5" />
+                      </button>
+                      <button 
                         onClick={() => handleRemoveMeal(meal.id)}
                         className="p-3 text-zinc-300 dark:text-zinc-600 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-2xl transition-all"
+                        title="Remover"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -253,15 +354,15 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
         })}
       </div>
 
-      {/* Add Modal */}
+      {/* Edit/Add Modal */}
       <AnimatePresence>
-        {isAdding && (
+        {isModalOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsAdding(false)}
+              onClick={closeModal}
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
             <motion.div
@@ -270,14 +371,14 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               className="relative bg-white dark:bg-zinc-900 w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl"
             >
-              <h3 className="text-xl font-bold mb-6 dark:text-white">Planejar Refeição</h3>
-              <form onSubmit={handleAddMeal} className="space-y-4">
+              <h3 className="text-xl font-bold mb-6 dark:text-white">{editingMealId ? 'Editar Refeição' : 'Planejar Refeição'}</h3>
+              <form onSubmit={handleSaveMeal} className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-400 uppercase">Nome da Refeição</label>
                   <input
                     type="text"
-                    value={newMeal.name}
-                    onChange={e => setNewMeal({ ...newMeal, name: e.target.value })}
+                    value={mealFormState.name}
+                    onChange={e => setMealFormState({ ...mealFormState, name: e.target.value })}
                     className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20 dark:text-white"
                     placeholder="Ex: Frango com Batata Doce"
                     required
@@ -288,8 +389,8 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-zinc-400 uppercase">Tipo</label>
                     <select
-                      value={newMeal.type}
-                      onChange={e => setNewMeal({ ...newMeal, type: e.target.value as any })}
+                      value={mealFormState.type}
+                      onChange={e => setMealFormState({ ...mealFormState, type: e.target.value as any })}
                       className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-3 outline-none dark:text-white"
                     >
                       {MEAL_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
@@ -299,8 +400,8 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
                     <label className="text-xs font-bold text-zinc-400 uppercase">Calorias</label>
                     <input
                       type="number"
-                      value={newMeal.calories || ''}
-                      onChange={e => setNewMeal({ ...newMeal, calories: parseInt(e.target.value) || 0 })}
+                      value={mealFormState.calories || ''}
+                      onChange={e => setMealFormState({ ...mealFormState, calories: parseInt(e.target.value) || 0 })}
                       className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-3 outline-none dark:text-white"
                     />
                   </div>
@@ -311,8 +412,8 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
                     <label className="text-[10px] font-bold text-zinc-400 uppercase">Prot (g)</label>
                     <input
                       type="number"
-                      value={newMeal.protein || ''}
-                      onChange={e => setNewMeal({ ...newMeal, protein: parseInt(e.target.value) || 0 })}
+                      value={mealFormState.protein || ''}
+                      onChange={e => setMealFormState({ ...mealFormState, protein: parseInt(e.target.value) || 0 })}
                       className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-2 outline-none dark:text-white"
                     />
                   </div>
@@ -320,8 +421,8 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
                     <label className="text-[10px] font-bold text-zinc-400 uppercase">Carb (g)</label>
                     <input
                       type="number"
-                      value={newMeal.carbs || ''}
-                      onChange={e => setNewMeal({ ...newMeal, carbs: parseInt(e.target.value) || 0 })}
+                      value={mealFormState.carbs || ''}
+                      onChange={e => setMealFormState({ ...mealFormState, carbs: parseInt(e.target.value) || 0 })}
                       className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-2 outline-none dark:text-white"
                     />
                   </div>
@@ -329,8 +430,8 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
                     <label className="text-[10px] font-bold text-zinc-400 uppercase">Gord (g)</label>
                     <input
                       type="number"
-                      value={newMeal.fats || ''}
-                      onChange={e => setNewMeal({ ...newMeal, fats: parseInt(e.target.value) || 0 })}
+                      value={mealFormState.fats || ''}
+                      onChange={e => setMealFormState({ ...mealFormState, fats: parseInt(e.target.value) || 0 })}
                       className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-2 outline-none dark:text-white"
                     />
                   </div>
@@ -340,7 +441,7 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
                   type="submit"
                   className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl hover:bg-emerald-600 transition-all mt-4 shadow-lg shadow-emerald-500/20"
                 >
-                  Adicionar ao Plano
+                  {editingMealId ? 'Salvar Alterações' : 'Adicionar ao Plano'}
                 </button>
               </form>
             </motion.div>
@@ -427,7 +528,7 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
                 
                 <button
                   type="submit"
-                  disabled={isGenerating || !dietText.trim()}
+                  disabled={isGenerating || !dietText.trim() || !isOnline}
                   className="w-full bg-emerald-500 text-white font-bold py-4 rounded-2xl hover:bg-emerald-600 transition-all mt-4 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isGenerating ? (
@@ -436,7 +537,7 @@ export default function WeeklyPlanner({ data, onUpdatePlanner, onLogMeal }: Week
                       Analisando dieta...
                     </>
                   ) : (
-                    'Importar Dieta'
+                    isOnline ? 'Importar Dieta' : 'IA Offline'
                   )}
                 </button>
               </form>

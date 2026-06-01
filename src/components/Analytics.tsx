@@ -64,20 +64,26 @@ export default function Analytics({ data, history, userProfile }: AnalyticsProps
     const dateStr = d.toISOString().split('T')[0];
     
     let cals = 0;
+    let dayGoals = null;
     if (i === 0) {
       // Today
       cals = data.meals.reduce((sum, m) => sum + m.calories, 0);
+      dayGoals = data.goals;
     } else {
       // History
       const dayData = history[dateStr];
       cals = dayData ? dayData.meals.reduce((sum, m) => sum + m.calories, 0) : 0;
+      dayGoals = dayData?.goals;
     }
     
     // Calculate goal calories safely
     let goalCals = 2000;
-    if (userProfile && userProfile.goal === 'lose') goalCals = 1800;
-    if (userProfile && userProfile.goal === 'gain') goalCals = 2500;
-    if (data.goals && data.goals.calories) goalCals = data.goals.calories;
+    if (dayGoals && dayGoals.calories) {
+      goalCals = dayGoals.calories;
+    } else {
+      if (userProfile && userProfile.goal === 'lose') goalCals = 1800;
+      if (userProfile && userProfile.goal === 'gain') goalCals = 2500;
+    }
 
     calorieTrendData.push({
       date: d.toLocaleDateString('pt-BR', { weekday: 'short' }),

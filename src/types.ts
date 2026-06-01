@@ -87,12 +87,24 @@ export interface PlannedWorkout {
   day: string; // 'seg', 'ter', etc.
 }
 
+export interface WorkoutDraft {
+  workouts: Workout[];
+  plannedWorkouts: PlannedWorkout[];
+}
+
 export interface DailyHistoryEntry {
   meals: Meal[];
   waterMl: number;
   workoutLogs?: WorkoutLog[];
   cardioLogs?: CardioLog[];
   steps?: number;
+  goals?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fats: number;
+    water: number;
+  };
 }
 
 export interface DailyData {

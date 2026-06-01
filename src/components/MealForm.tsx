@@ -3,6 +3,7 @@ import { Plus, X, Sparkles, Loader2, Camera } from 'lucide-react';
 import { Meal, PlannedMeal } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { geminiService } from '../services/geminiService';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface MealFormProps {
   onAddMeal: (meal: Omit<Meal, 'id' | 'timestamp'>) => void;
@@ -10,6 +11,7 @@ interface MealFormProps {
 }
 
 export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
+  const isOnline = useOnlineStatus();
   const [isOpen, setIsOpen] = useState(false);
   const [isAiMode, setIsAiMode] = useState(true);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -155,13 +157,17 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
                 <div className="space-y-6 sm:space-y-8">
                   <div className="grid grid-cols-1 gap-2 sm:gap-4">
                     <button
+                      type="button"
+                      disabled={!isOnline}
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center justify-center gap-3 p-4 sm:p-6 bg-emerald-50 dark:bg-emerald-500/5 border-2 border-dashed border-emerald-200 dark:border-emerald-500/20 rounded-2xl sm:rounded-[2rem] hover:bg-emerald-100 dark:hover:bg-emerald-500/10 transition-all group"
+                      className={`flex items-center justify-center gap-3 p-4 sm:p-6 bg-emerald-50 dark:bg-emerald-500/5 border-2 border-dashed border-emerald-200 dark:border-emerald-500/20 rounded-2xl sm:rounded-[2rem] transition-all group ${!isOnline ? 'opacity-50 cursor-not-allowed' : 'hover:bg-emerald-100 dark:hover:bg-emerald-500/10'}`}
                     >
                       <div className="p-3 sm:p-4 bg-white dark:bg-zinc-800 rounded-xl sm:rounded-2xl shadow-sm group-hover:scale-110 transition-transform">
                         <Camera className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600 dark:text-emerald-500" />
                       </div>
-                      <span className="text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-widest text-center">Capturar Imagem</span>
+                      <span className="text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-widest text-center">
+                        {isOnline ? 'Capturar Imagem' : 'IA Indisponível (Offline)'}
+                      </span>
                     </button>
                     <input
                       type="file"
@@ -192,7 +198,7 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
                     <div className="flex gap-3 sm:gap-4">
                       <button
                         type="submit"
-                        disabled={isAiLoading || !aiInput.trim()}
+                        disabled={isAiLoading || !aiInput.trim() || !isOnline}
                         className="flex-1 bg-emerald-500 text-white font-bold py-4 sm:py-5 rounded-2xl hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2 sm:gap-3 disabled:opacity-50 text-[10px] sm:text-sm uppercase tracking-widest"
                       >
                         {isAiLoading ? (
@@ -203,7 +209,7 @@ export default function MealForm({ onAddMeal, plannedMeals }: MealFormProps) {
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
-                            Analisar Texto
+                            {isOnline ? 'Analisar Texto' : 'IA Offline'}
                           </>
                         )}
                       </button>
