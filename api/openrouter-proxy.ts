@@ -14,6 +14,13 @@ const jsonResponse = (payload: unknown, status: number) =>
     },
   });
 
+const upstreamResponseHeaders = (headers: Headers) => {
+  const responseHeaders = new Headers();
+  responseHeaders.set('Content-Type', headers.get('content-type') || 'application/json; charset=utf-8');
+  responseHeaders.set('Cache-Control', 'no-store');
+  return responseHeaders;
+};
+
 async function handler(req: Request) {
   const startedAt = Date.now();
   try {
@@ -85,7 +92,7 @@ async function handler(req: Request) {
 
     return new Response(proxyRes.body, {
       status: proxyRes.status,
-      headers: proxyRes.headers,
+      headers: upstreamResponseHeaders(proxyRes.headers),
     });
   } catch (error) {
     console.error('Proxy error:', error);

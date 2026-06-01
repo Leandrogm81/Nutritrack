@@ -1,9 +1,10 @@
 # Próximas Ações
 
-## Prioridade 1 — Validar correção do timeout 504 da IA
-- [ ] Aguardar deploy Vercel contendo o commit `66ef857` ou posterior completar
-- [ ] Repetir o fluxo que gerou `FUNCTION_INVOCATION_TIMEOUT` em `/api/opencode-proxy`
-- [ ] Confirmar se o erro de plataforma da Vercel sumiu; se houver 504 controlado, investigar latência/instabilidade da OpenCode Go
+## Prioridade 1 — Validar correção de headers do proxy IA
+- [ ] Commitar e enviar sanitização de headers em `api/opencode-proxy.ts` e `api/openrouter-proxy.ts`
+- [ ] Aguardar deploy Vercel contendo a sanitização completar
+- [ ] Repetir o fluxo que gerou `net::ERR_CONTENT_DECODING_FAILED` em `/api/opencode-proxy`
+- [ ] Confirmar se a chamada passa; se ainda falhar, consultar logs Vercel/Dashboard para status upstream e possível restrição de uso/credencial OpenCode Go
 
 ## Prioridade 2 — Confirmação de instalação Android (ação humana)
 - [ ] Aguardar deploy Vercel completar após o próximo commit (~1-2 minutos)

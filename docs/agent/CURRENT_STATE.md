@@ -1,13 +1,13 @@
 # Current State
 
 ## Estado atual
-MVP v1.2.7 no `main`, com correção de código publicada no commit `66ef857` para o erro reportado em produção: `/api/opencode-proxy` ainda rodava como Vercel Edge Function e dependia de resposta inicial do provedor de IA antes do limite de Edge, gerando `FUNCTION_INVOCATION_TIMEOUT` quando a OpenCode Go demorava.
+MVP v1.2.7 no `main`. A correção de código `66ef857` migrou os proxies de IA para Vercel Node runtime para sair do limite de Edge. Após deploy, o usuário reportou novo erro em produção: `/api/opencode-proxy` com `net::ERR_CONTENT_DECODING_FAILED`.
 
 ## Última ação relevante
-Commit `66ef857` — `api/opencode-proxy.ts` e `api/openrouter-proxy.ts` migrados do runtime Edge para Vercel Node Web Handler (`export default { fetch }`), com `maxDuration: 60` em `vercel.json`, timeout interno de 55s, headers mínimos para o upstream e erro JSON controlado. `src/services/geminiService.ts` agora extrai a mensagem de erro JSON do proxy.
+Correção local preparada para o novo erro: `api/opencode-proxy.ts` e `api/openrouter-proxy.ts` deixaram de repassar headers brutos do upstream na resposta. O proxy agora retorna apenas `Content-Type` e `Cache-Control`, evitando repassar `content-encoding`/`content-length` incompatíveis quando o Node fetch já descompactou o corpo.
 
 ## Arquivos relevantes
-- `api/opencode-proxy.ts` — proxy principal OpenCode Go em Node runtime, com timeout controlado
+- `api/opencode-proxy.ts` — proxy principal OpenCode Go em Node runtime, com timeout controlado e headers de resposta sanitizados
 - `api/openrouter-proxy.ts` — proxy compatível/cache legado com mesma correção
 - `vercel.json` — `maxDuration` de 60s para os proxies de IA
 - `src/services/geminiService.ts` — cliente IA apontando para `/api/opencode-proxy`
@@ -18,15 +18,16 @@ Commit `66ef857` — `api/opencode-proxy.ts` e `api/openrouter-proxy.ts` migrado
 - `npm run build` passou (warning de chunk size permanece não bloqueante)
 
 ## Pendências imediatas
-- Aguardar deploy Vercel contendo o commit `66ef857` ou posterior
-- Confirmar variáveis de ambiente no painel da Vercel (`OPENCODE_API_KEY` ou `OPENCODE_GO_API_KEY`)
+- Commitar/pushar a correção de `ERR_CONTENT_DECODING_FAILED`
+- Aguardar deploy Vercel contendo a sanitização de headers
 - Retestar chamada de IA em produção após deploy
 
 ## Riscos atuais
-- Se a OpenCode Go demorar mais de 55s, o app receberá 504 controlado do proxy; não deve mais aparecer `FUNCTION_INVOCATION_TIMEOUT` da Vercel
+- Se a OpenCode Go demorar mais de 55s, o app receberá 504 controlado do proxy
+- Se continuar falhando após sanitização de headers, será necessário consultar logs Vercel/Dashboard e confirmar política/credencial da OpenCode Go
 - Smoke-test de instalação física no Android ainda não finalizado
 
 ## Não fazer agora
 - Não voltar os proxies para Edge runtime para fluxos longos de IA
-- Não restaurar `content-length` ao reenviar body modificado
+- Não repassar `content-encoding`/`content-length` brutos do upstream
 - Não abrir novas sprints sem decisão humana
