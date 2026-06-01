@@ -1,19 +1,20 @@
 # Current State
 
 ## Estado atual
-MVP v1.2.2 publicado no GitHub (`main`, commit `514c14d`). Ícone Lucide no cabeçalho substituído pelo novo logotipo (`favicon.svg`). Bloqueador da instalação PWA Android resolvido: `pwa-512x512.png` e `pwa-maskable-512x512.png` convertidos de JPEG para PNG reais usando `sharp`. Menu de navegação inferior otimizado para mobile (tamanho de fonte `8px` e padding `p-2` em telas pequenas). Deploy Vercel automático disparado.
+MVP v1.2.3 publicado no GitHub (`main`, commit `93ccddb`). Integração de IA migrada de OpenRouter para OpenCode Go (`https://opencode.ai/zen/go/v1/chat/completions`), mantendo o modelo `xiaomi/mimo-v2.5`. O proxy de borda `/api/opencode-proxy.ts` substituiu o proxy do OpenRouter. Deploy Vercel automático disparado.
 
 ## Última ação relevante
-Commit `514c14d` — reduz fonte e padding dos botões de navegação inferior em mobile.
+Commit `93ccddb` — migra proxy de borda e serviços de IA de OpenRouter para OpenCode Go.
 
 ## Arquivos relevantes
-- `src/App.tsx` — Otimização de CSS/classes do menu de navegação inferior
-- `index.html` — Link do manifesto PWA explicitado
+- `src/services/geminiService.ts` — Serviços de IA apontando para o novo proxy `/api/opencode-proxy`
+- `api/opencode-proxy.ts` — Novo proxy Vercel Edge integrado ao OpenCode Go
+- `vite.config.ts` — Definições de ambiente do Vite atualizadas para OpenCode
 
 ## Pendências imediatas
-- Limpar cache do Chrome Android e testar instalação "Adicionar à tela inicial"
-- Aguardar deploy Vercel completar (~1-2 minutos)
-- Confirmar variáveis de ambiente no dashboard Vercel (`OPENROUTER_API_KEY`)
+- Configurar variáveis de ambiente no painel da Vercel (`OPENCODE_API_KEY` ou `OPENCODE_GO_API_KEY`)
+- Testar chamada de IA no app para garantir o funcionamento correto com o novo endpoint
+- Limpar cache do Chrome Android e testar instalação PWA v1.2.2/v1.2.3
 
 ## Riscos atuais
 - Smoke-test de instalação física no Android ainda não finalizado

@@ -1,24 +1,25 @@
 # Handoff — Continuidade de Sessão
 
 ## 1. Objetivo atual
-Tornar o NutriTrack MVP v1.2.2 instalável como app Android (PWA), exibindo o novo logotipo no cabeçalho, corrigindo a compatibilidade das imagens e otimizando o menu inferior para melhor legibilidade em mobile.
+Tornar o NutriTrack MVP v1.2.3 instalável como app Android (PWA), com integração de IA rodando via OpenCode Go (`https://opencode.ai/zen/go/v1`) com o modelo `xiaomi/mimo-v2.5`, exibindo o novo logotipo no cabeçalho.
 
 ## 2. Estado geral do projeto
-MVP completo. Código com as novas correções publicado no GitHub (`main`, commit `514c14d`). Deploy Vercel automático disparado pelo push. Correção de instalação PWA realizada: os arquivos `pwa-512x512.png` e `pwa-maskable-512x512.png` estavam com cabeçalhos JPEG disfarçados de PNG, o que fazia o Chrome Android rejeitar o manifesto. Foram convertidos com sucesso em PNGs de verdade usando `sharp`. O cabeçalho agora exibe o novo logotipo (`favicon.svg`). O menu inferior foi otimizado (fonte menor e menos padding) para melhor encaixe em mobile.
+MVP completo. Código publicado no GitHub (`main`, commit `93ccddb`). Deploy Vercel automático disparado pelo push. Integração de IA migrada de OpenRouter para OpenCode Go de forma bem-sucedida, renomeando o proxy de borda `/api/openrouter-proxy` para `/api/opencode-proxy`. O proxy suporta chaves `OPENCODE_API_KEY`, `OPENCODE_GO_API_KEY` ou `OPENROUTER_API_KEY` para retrocompatibilidade.
 
 ## 3. O que já foi feito nesta sessão
-- **Otimização do menu inferior**: tamanho de fonte reduzido para `8px` (com fallback de `10px` em desktop) e padding reduzido de `p-3` para `p-2` no mobile no componente `NavButton` (`src/App.tsx`), evitando quebras ou cortes de layout em dispositivos móveis.
-- **Substituição do ícone no cabeçalho** (`ab72665`): trocado o ícone genérico `Activity` (batimento cardíaco) pela imagem do novo logotipo (`favicon.svg`).
-- **PWA Imagens Hardening**:
-  - `public/pwa-512x512.png` e `public/pwa-maskable-512x512.png` convertidos para o formato PNG nativo (antes eram JPEG renomeados, gerando erros de decodificação no Chrome Android).
-  - Link de `<link rel="manifest" href="/manifest.webmanifest" />` adicionado de forma explícita no arquivo `index.html`.
-- **Compilação e validação do build de produção**: `npm run build` executado e bem-sucedido.
-- **Git Commit & Push**: commits `ab72665` e `514c14d` enviados ao repositório remoto.
+- **Migração para OpenCode Go**:
+  - Criado o edge proxy `/api/opencode-proxy.ts` apontando para `https://opencode.ai/zen/go/v1/chat/completions` (suporta `OPENCODE_API_KEY`, `OPENCODE_GO_API_KEY` ou fallback para `OPENROUTER_API_KEY`).
+  - Removido o proxy antigo `api/openrouter-proxy.ts`.
+  - Atualizado `src/services/geminiService.ts` e `vite.config.ts` para usar o novo proxy e as novas definições de modelo.
+- **Otimização do menu inferior**: tamanho de fonte reduzido para `8px` e padding reduzido no mobile no componente `NavButton` (`src/App.tsx`), evitando quebras de layout.
+- **PWA Imagens Hardening & Logotipo**: formato dos ícones corrigido e logotipo `favicon.svg` inserido no cabeçalho.
+- **Compilação e validação do build de produção**: `npm run build` e testes executados e bem-sucedidos.
+- **Git Commit & Push**: commits `93ccddb` e `9f791cb` enviados ao repositório remoto.
 
 ## 4. Decisões tomadas
-- **Navegação inferior compacta**: o número elevado de abas (7 seções) causava aperto excessivo no mobile. O ajuste dinâmico com padding e font-size menores no mobile foi a solução ideal sem remover abas necessárias.
-- **Conversão forçada via sharp**: qualquer imagem de ícone do manifesto PWA deve ter tipo MIME e cabeçalho correspondentes. Usar JPEGs com extensão `.png` impede a validação do PWA pelo Chrome. A correção foi automatizada via script Node/sharp.
-- **Logotipo no cabeçalho**: o logotipo `favicon.svg` foi integrado diretamente como tag `img` no cabeçalho, garantindo identidade visual harmônica com o PWA.
+- **Renomeação do Proxy**: preferiu-se renomear o arquivo e rota do proxy para `/api/opencode-proxy.ts` para manter a coerência semântica com o novo provedor, mas a lógica da chamada mantém compatibilidade com chaves anteriores.
+- **Preservação de Mimo v2.5**: o modelo oficial exigido permanece `xiaomi/mimo-v2.5`.
+- **Navegação inferior compacta**: o tamanho de fonte dinâmico reduziu o aperto no mobile.
 
 ## 5. Arquivos importantes
 - `src/App.tsx` — Cabeçalho atualizado para renderizar `favicon.svg`
