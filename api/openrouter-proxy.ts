@@ -10,7 +10,14 @@ export default async function handler(req: Request) {
       return new Response('Server configuration error: Missing API Key', { status: 500 });
     }
 
-    const targetUrl = new URL(process.env.OPENCODE_API_URL || 'https://opencode.ai/zen/go/v1/chat/completions');
+    let targetUrlStr = process.env.OPENCODE_API_URL || 'https://opencode.ai/zen/go/v1/chat/completions';
+    // Ensure targetUrlStr ends with /chat/completions for OpenAI compatibility.
+    // If the user provided a base URL like https://opencode.ai/zen/go/v1, we append it automatically.
+    if (!targetUrlStr.includes('/chat/completions')) {
+      targetUrlStr = targetUrlStr.replace(/\/$/, '') + '/chat/completions';
+    }
+
+    const targetUrl = new URL(targetUrlStr);
 
     const headers = new Headers(req.headers);
     headers.delete('host');
