@@ -1,9 +1,7 @@
 # Próximas Ações
 
-## Prioridade 1 — Publicar correção do timeout 504 da IA
-- [ ] Revisar diff de `api/opencode-proxy.ts`, `api/openrouter-proxy.ts`, `vercel.json` e `src/services/geminiService.ts`
-- [ ] Commitar e enviar a correção para o GitHub
-- [ ] Aguardar deploy Vercel completar
+## Prioridade 1 — Validar correção do timeout 504 da IA
+- [ ] Aguardar deploy Vercel do commit `66ef857` completar
 - [ ] Repetir o fluxo que gerou `FUNCTION_INVOCATION_TIMEOUT` em `/api/opencode-proxy`
 - [ ] Confirmar se o erro de plataforma da Vercel sumiu; se houver 504 controlado, investigar latência/instabilidade da OpenCode Go
 
