@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2026-06-01 - PWA Android Hardening & Logo Header Update (v1.2.1)
+
+### Resumo
+- SubstituÃ­do o Ã­cone genÃ©rico do cabeÃ§alho pelo novo logotipo oficial do NutriTrack (`favicon.svg`).
+- Corrigido o formato dos Ã­cones PWA `pwa-512x512.png` e `pwa-maskable-512x512.png` convertendo-os de JPEG para PNG nativos de verdade via `sharp`, resolvendo o bloqueador de instalaÃ§Ã£o PWA no Chrome Android.
+- Adicionado o link de manifesto explicitamente em `index.html`.
+
+### Arquivos afetados
+- `src/App.tsx`
+- `index.html`
+- `public/pwa-512x512.png`
+- `public/pwa-maskable-512x512.png`
+
+### Motivo
+Garantir a instalaÃ§Ã£o completa e robusta do PWA no Android Chrome, assegurando compatibilidade de tipos MIME de imagens com as especificaÃ§Ãµes do manifesto de PWA, e integrando a identidade visual definitiva do logotipo no cabeÃ§alho do aplicativo.
+
+
 ## 2026-06-01 - ExecuÃ§Ã£o completa da Sprint 08 (Plano de Treino e IA)
 
 ### Resumo
@@ -415,10 +432,10 @@ Sprint 2 executada de ponta a ponta com mapeamento inicial, validacoes de perfil
  -   N e n h u m a   p a r a   o   e s c o p o   d e s t a   s p r i n t .   O   p r o j e t o   s e g u e   p a r a   a   S p r i n t   4 . 
   
  
-## 2026-06-01 - Migração de Inteligência Artificial para OpenRouter e Finalização da Sprint 09
+## 2026-06-01 - Migraï¿½ï¿½o de Inteligï¿½ncia Artificial para OpenRouter e Finalizaï¿½ï¿½o da Sprint 09
 
 ### Resumo
-Migração das integrações de IA, que antes utilizavam a API Gemini do Google diretamente, para o uso da API do OpenRouter configurada para servir o modelo \xiaomi/mimo-v2.5\. Conclusão das bordas de desconexão (modo offline) das IAs de dieta, treino e análise.
+Migraï¿½ï¿½o das integraï¿½ï¿½es de IA, que antes utilizavam a API Gemini do Google diretamente, para o uso da API do OpenRouter configurada para servir o modelo \xiaomi/mimo-v2.5\. Conclusï¿½o das bordas de desconexï¿½o (modo offline) das IAs de dieta, treino e anï¿½lise.
 
 ### Arquivos afetados
 - \src/services/geminiService.ts\
@@ -430,11 +447,11 @@ Migração das integrações de IA, que antes utilizavam a API Gemini do Google dire
 - \src/components/WorkoutTracker.tsx\
 
 ### Motivo
-Atender a exigência do usuário por utilizar o modelo \xiaomi/mimo-v2.5\ na plataforma do OpenRouter, mantendo o padrão PWA offline e a proteção das chaves via proxy.
+Atender a exigï¿½ncia do usuï¿½rio por utilizar o modelo \xiaomi/mimo-v2.5\ na plataforma do OpenRouter, mantendo o padrï¿½o PWA offline e a proteï¿½ï¿½o das chaves via proxy.
 
-### Evidência
-Serviço \geminiService.ts\ completamente reescrito para utilizar \etch\ padronizado pela OpenAI em vez do SDK nativo do \@google/genai\. Modo offline adicionado através da interface.
+### Evidï¿½ncia
+Serviï¿½o \geminiService.ts\ completamente reescrito para utilizar \etch\ padronizado pela OpenAI em vez do SDK nativo do \@google/genai\. Modo offline adicionado atravï¿½s da interface.
 
-### Pendências
-Atualizar variáveis de ambiente no dashboard da Vercel.
+### Pendï¿½ncias
+Atualizar variï¿½veis de ambiente no dashboard da Vercel.
 
