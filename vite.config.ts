@@ -8,17 +8,22 @@ export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
     plugins: [
-      react(), 
+      react(),
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         manifest: {
-          name: 'NutriTrack PWA',
+          name: 'NutriTrack',
           short_name: 'NutriTrack',
-          description: 'Seu assistente de dieta e hidratação offline',
+          description: 'Seu assistente de dieta e treino — offline, local-first, com IA',
           theme_color: '#10b981',
-          background_color: '#ffffff',
+          background_color: '#064e3b',
           display: 'standalone',
+          start_url: '/',
+          scope: '/',
+          orientation: 'portrait',
+          lang: 'pt-BR',
           icons: [
             {
               src: '/pwa-192x192.png',
@@ -29,6 +34,12 @@ export default defineConfig(({mode}) => {
               src: '/pwa-512x512.png',
               sizes: '512x512',
               type: 'image/png'
+            },
+            {
+              src: '/pwa-maskable-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable'
             }
           ]
         }
