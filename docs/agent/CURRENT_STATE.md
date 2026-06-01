@@ -1,7 +1,7 @@
 # Current State
 
 ## Estado atual
-MVP v1.2.7 no `main`, commit `66ef857`, com correção publicada no GitHub para o erro reportado em produção: `/api/opencode-proxy` ainda rodava como Vercel Edge Function e dependia de resposta inicial do provedor de IA antes do limite de Edge, gerando `FUNCTION_INVOCATION_TIMEOUT` quando a OpenCode Go demorava.
+MVP v1.2.7 no `main`, com correção de código publicada no commit `66ef857` para o erro reportado em produção: `/api/opencode-proxy` ainda rodava como Vercel Edge Function e dependia de resposta inicial do provedor de IA antes do limite de Edge, gerando `FUNCTION_INVOCATION_TIMEOUT` quando a OpenCode Go demorava.
 
 ## Última ação relevante
 Commit `66ef857` — `api/opencode-proxy.ts` e `api/openrouter-proxy.ts` migrados do runtime Edge para Vercel Node Web Handler (`export default { fetch }`), com `maxDuration: 60` em `vercel.json`, timeout interno de 55s, headers mínimos para o upstream e erro JSON controlado. `src/services/geminiService.ts` agora extrai a mensagem de erro JSON do proxy.
@@ -18,7 +18,7 @@ Commit `66ef857` — `api/opencode-proxy.ts` e `api/openrouter-proxy.ts` migrado
 - `npm run build` passou (warning de chunk size permanece não bloqueante)
 
 ## Pendências imediatas
-- Aguardar deploy Vercel disparado pelo push do commit `66ef857`
+- Aguardar deploy Vercel contendo o commit `66ef857` ou posterior
 - Confirmar variáveis de ambiente no painel da Vercel (`OPENCODE_API_KEY` ou `OPENCODE_GO_API_KEY`)
 - Retestar chamada de IA em produção após deploy
 
