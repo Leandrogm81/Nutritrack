@@ -1,10 +1,10 @@
 # Current State
 
 ## Estado atual
-MVP v1.2.7 no `main`. Após falhas reais com OpenCode Go em produção (`FUNCTION_INVOCATION_TIMEOUT`, `ERR_CONTENT_DECODING_FAILED`) e consumo de tokens na OpenCode sem retorno útil ao app, a integração de IA foi revertida para OpenRouter.
+MVP v1.2.7 no `main`. A integração de IA voltou para OpenRouter no commit `f699875`; OpenCode Go não deve ser usado sem nova decisão humana. Nesta sessão foi ajustado o layout dos cards do Planejador para manter nomes longos dentro do card.
 
 ## Última ação relevante
-Configuração OpenRouter restaurada localmente: `src/services/geminiService.ts` volta a chamar `/api/openrouter-proxy`; `api/openrouter-proxy.ts` aponta para `https://openrouter.ai/api/v1/chat/completions`; `api/opencode-proxy.ts` fica apenas como rota compatível para clientes PWA antigos, mas também roteia para OpenRouter e não lê `OPENCODE_*`.
+`src/components/WeeklyPlanner.tsx` — cards de refeições trocaram `flex` por grid responsivo, com `min-w-0`, `break-words`, `overflow-wrap:anywhere` e ações em linha própria no mobile.
 
 ## Arquivos relevantes
 - `src/services/geminiService.ts` — cliente IA apontando para `/api/openrouter-proxy`
@@ -12,6 +12,7 @@ Configuração OpenRouter restaurada localmente: `src/services/geminiService.ts`
 - `api/opencode-proxy.ts` — endpoint compatível/cache legado, roteando para OpenRouter
 - `vite.config.ts` — expõe apenas `VITE_OPENROUTER_MODEL`
 - `.env.example` — atualizado para `OPENROUTER_API_KEY`
+- `src/components/WeeklyPlanner.tsx` — cards do Planejador com texto contido
 
 ## Validações executadas
 - `npm run lint` passou
@@ -21,12 +22,14 @@ Configuração OpenRouter restaurada localmente: `src/services/geminiService.ts`
 ## Pendências imediatas
 - Confirmar que a Vercel possui `OPENROUTER_API_KEY`
 - Remover/ignorar `OPENCODE_API_KEY`, `OPENCODE_GO_API_KEY` e `OPENCODE_API_URL` na Vercel
-- Commitar/pushar a volta para OpenRouter
+- Aguardar deploy do ajuste visual dos cards
+- Conferir cards do Planejador em produção/mobile
 - Retestar Gerador de Dieta em produção após deploy
 
 ## Riscos atuais
 - Se `VITE_OPENCODE_MODEL` ainda existir em cache/build antigo, pode haver confusão; o novo build não usa essa variável
 - Se o PWA Android estiver com service worker antigo, pode continuar chamando `/api/opencode-proxy`; essa rota foi mantida compatível e aponta para OpenRouter
+- Teste visual local por navegador não foi executado por falta de ferramenta Browser exposta nesta sessão; build validou CSS/TS
 
 ## Não fazer agora
 - Não voltar para OpenCode Go sem decisão humana

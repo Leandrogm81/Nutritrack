@@ -1,10 +1,10 @@
 # Handoff — Continuidade de Sessão
 
 ## 1. Objetivo atual
-Restaurar a integração de IA do NutriTrack para OpenRouter (`xiaomi/mimo-v2.5`) via proxy Vercel seguro, encerrando a tentativa operacional com OpenCode Go.
+Manter o NutriTrack operando com IA via OpenRouter (`xiaomi/mimo-v2.5`) e corrigir pequenos problemas visuais do Planejador.
 
 ## 2. Estado geral do projeto
-O usuário confirmou que a configuração OpenCode Go não funcionou no app e mostrou que as tentativas estavam consumindo tokens na OpenCode. A decisão operacional atual é voltar para OpenRouter.
+O usuário confirmou que a configuração OpenCode Go não funcionou no app e mostrou que as tentativas estavam consumindo tokens na OpenCode. A integração voltou para OpenRouter no commit `f699875`. Nesta sessão foi corrigido o layout dos cards de refeições do Planejador para impedir que nomes longos estourem ou empurrem ações para fora do card.
 
 ## 3. O que foi feito nesta sessão
 - `src/services/geminiService.ts` voltou a usar `/api/openrouter-proxy`.
@@ -14,6 +14,7 @@ O usuário confirmou que a configuração OpenCode Go não funcionou no app e mo
 - `vite.config.ts` removeu `VITE_OPENCODE_MODEL`.
 - `.env.example` foi atualizado para `OPENROUTER_API_KEY`, `VITE_OPENROUTER_MODEL` e `OPENROUTER_PROXY_TIMEOUT_MS`.
 - `README.md` foi alinhado para proxy Vercel Node em OpenRouter.
+- `src/components/WeeklyPlanner.tsx` passou a usar grid responsivo nos cards de refeição, com quebra forçada de texto e ações em linha própria no mobile.
 
 ## 4. Validações executadas
 | Comando | Status |
@@ -29,23 +30,24 @@ O usuário confirmou que a configuração OpenCode Go não funcionou no app e mo
 | `/api/opencode-proxy.ts` | Compatibilidade/cache antigo | Roteia para OpenRouter; não usa OpenCode |
 | `/src/services/geminiService.ts` | Cliente IA | Chama `/api/openrouter-proxy` |
 | `/vite.config.ts` | Build env | Apenas modelo OpenRouter não sensível |
+| `/src/components/WeeklyPlanner.tsx` | Planejador alimentar | Cards de refeição com texto contido |
 
 ## 6. Problemas encontrados
 - OpenCode Go consumiu tokens mesmo quando o app falhou no retorno ao navegador.
 - O erro `ERR_CONTENT_DECODING_FAILED` indicava problema de retorno/headers, mas o custo consumido torna a rota OpenCode indesejada no momento.
 - A Vercel CLI não está instalada localmente; validação de deploy/logs precisa ser pelo Dashboard ou após push.
+- Browser local não estava disponível como ferramenta nesta sessão; a verificação visual foi limitada a revisão de código + build.
 
 ## 7. Pendências
 | Pendência | Impacto | Prioridade |
 |---|---|---|
-| Rodar validações locais | Garantir que a reversão não quebrou build/testes | Alta |
-| Commitar/pushar volta para OpenRouter | Necessário para deploy Vercel | Alta |
 | Confirmar `OPENROUTER_API_KEY` na Vercel | IA não funciona sem segredo server-side | Alta |
 | Remover/ignorar variáveis `OPENCODE_*` na Vercel | Evitar novas cobranças na OpenCode | Alta |
 | Retestar Gerador de Dieta em produção | Confirma funcionamento OpenRouter | Alta |
+| Conferir cards do Planejador em produção/mobile | Confirmar que textos longos ficam dentro do card | Média |
 
 ## 8. Próxima ação recomendada
-Commitar/pushar a volta para OpenRouter. Após o deploy, testar apenas uma chamada simples no Gerador de Dieta e conferir se o histórico da OpenCode para de aumentar.
+Após o deploy, conferir os cards do Planejador em mobile e testar apenas uma chamada simples no Gerador de Dieta.
 
 ## 9. O que o próximo agente NÃO deve fazer
 - Não voltar para OpenCode Go sem decisão humana.
@@ -55,5 +57,5 @@ Commitar/pushar a volta para OpenRouter. Após o deploy, testar apenas uma chama
 
 ## 10. Segurança para troca de sessão
 - Seguro rodar `/new`? Com ressalvas.
-- Motivo: a reversão local está preparada, mas ainda precisa validação, commit/push e teste de produção.
-- Nome sugerido para a próxima sessão: Validar_OpenRouter_Proxy_Prod
+- Motivo: OpenRouter já foi publicado; ajuste visual está validado por lint/test/build, mas ainda precisa conferência visual em produção.
+- Nome sugerido para a próxima sessão: Validar_Cards_Planejador_Prod

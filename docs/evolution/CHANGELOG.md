@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 2026-06-01 - Ajuste de contenção de texto nos cards do Planejador
+
+### Resumo
+- Os cards de refeições do Planejador passaram de layout `flex` para grid responsivo.
+- Nomes longos de refeições agora usam `min-w-0`, `break-words`, `overflow-wrap:anywhere` e `hyphens-auto`.
+- As ações do card ficam em linha própria no mobile, evitando que o texto seja espremido ou empurre ícones para fora.
+
+### Arquivos afetados
+- `src/components/WeeklyPlanner.tsx`
+
+### Evidência
+- `npm run lint` passou.
+- `npm run test -- --run` passou (7 arquivos, 23 testes).
+- `npm run build` passou.
+
 ## 2026-06-01 - Retorno da IA para OpenRouter
 
 ### Resumo

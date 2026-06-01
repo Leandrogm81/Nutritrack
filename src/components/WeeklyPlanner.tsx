@@ -277,56 +277,52 @@ export default function WeeklyPlanner({ data, draftMeals, onUpdatePlanner, onDra
                   : 'bg-zinc-50/50 dark:bg-zinc-900/30 border-dashed border-zinc-200 dark:border-zinc-800'
               }`}
             >
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-5">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm ${meal ? 'bg-zinc-50 dark:bg-zinc-800' : 'bg-transparent'}`}>
+              <div className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-5 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto] sm:items-center">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm ${meal ? 'bg-zinc-50 dark:bg-zinc-800' : 'bg-transparent'}`}>
                     {type.icon}
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">{type.label}</p>
-                    <h4 className={`text-lg font-bold tracking-tight ${meal ? 'text-zinc-900 dark:text-white' : 'text-zinc-300 dark:text-zinc-700'}`}>
-                      {meal ? meal.name : 'Não planejado'}
-                    </h4>
-                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {meal && (
-                    <>
-                      <button 
-                        onClick={() => {
-                          onLogMeal({
-                            name: meal.name,
-                            calories: meal.calories,
-                            protein: meal.protein,
-                            carbs: meal.carbs,
-                            fats: meal.fats
-                          });
-                          setMessage({ type: 'success', text: `${meal.name} registrado para hoje!` });
-                          setTimeout(() => setMessage(null), 3000);
-                        }}
-                        className="p-3 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-2xl transition-all flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"
-                        title="Registrar no Histórico de Hoje"
-                      >
-                        <CheckCircle2 className="w-5 h-5" />
-                        <span className="hidden sm:inline">Registrar</span>
-                      </button>
-                      <button 
-                        onClick={() => openEditModal(meal)}
-                        className="p-3 text-zinc-300 dark:text-zinc-600 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-2xl transition-all"
-                        title="Editar"
-                      >
-                        <Pencil className="w-5 h-5" />
-                      </button>
-                      <button 
-                        onClick={() => handleRemoveMeal(meal.id)}
-                        className="p-3 text-zinc-300 dark:text-zinc-600 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-2xl transition-all"
-                        title="Remover"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </>
-                  )}
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">{type.label}</p>
+                  <h4 className={`max-w-full text-lg font-bold tracking-tight leading-snug break-words [overflow-wrap:anywhere] hyphens-auto ${meal ? 'text-zinc-900 dark:text-white' : 'text-zinc-300 dark:text-zinc-700'}`}>
+                    {meal ? meal.name : 'Não planejado'}
+                  </h4>
                 </div>
+                {meal && (
+                  <div className="col-span-2 flex min-w-0 items-center justify-end gap-1 sm:col-span-1 sm:flex-shrink-0 sm:gap-2">
+                    <button
+                      onClick={() => {
+                        onLogMeal({
+                          name: meal.name,
+                          calories: meal.calories,
+                          protein: meal.protein,
+                          carbs: meal.carbs,
+                          fats: meal.fats
+                        });
+                        setMessage({ type: 'success', text: `${meal.name} registrado para hoje!` });
+                        setTimeout(() => setMessage(null), 3000);
+                      }}
+                      className="min-w-0 p-3 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-2xl transition-all flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"
+                      title="Registrar no Histórico de Hoje"
+                    >
+                      <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                      <span className="max-w-24 truncate sm:max-w-none">Registrar</span>
+                    </button>
+                    <button
+                      onClick={() => openEditModal(meal)}
+                      className="p-3 text-zinc-300 dark:text-zinc-600 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-2xl transition-all"
+                      title="Editar"
+                    >
+                      <Pencil className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleRemoveMeal(meal.id)}
+                      className="p-3 text-zinc-300 dark:text-zinc-600 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-2xl transition-all"
+                      title="Remover"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
               </div>
               
               {meal && (
