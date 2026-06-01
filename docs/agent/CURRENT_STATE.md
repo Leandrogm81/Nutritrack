@@ -1,15 +1,15 @@
 # Current State
 
 ## Estado atual
-MVP v1.2.5 publicado no GitHub (`main`, commit `616a60f`). Integração de IA migrada de OpenRouter para OpenCode Go (`https://opencode.ai/zen/go/v1/chat/completions`), mantendo o modelo `xiaomi/mimo-v2.5`. O proxy `/api/openrouter-proxy.ts` foi duplicado de forma independente para evitar erros de compilação da Vercel. Ambos os proxies de borda agora contam com lógica de auto-correção para anexar automaticamente `/chat/completions` se a URL do ambiente apontar apenas para a URL base.
+MVP v1.2.6 publicado no GitHub (`main`, commit `84ef02e`). Integração de IA migrada de OpenRouter para OpenCode Go (`https://opencode.ai/zen/go/v1/chat/completions`), mantendo o modelo `xiaomi/mimo-v2.5` no código do cliente. Os proxies de borda agora removem automaticamente prefixos de fornecedor (ex: transformando `xiaomi/mimo-v2.5` em `mimo-v2.5` para o request) garantindo total compatibilidade com o catálogo direto da OpenCode Go.
 
 ## Última ação relevante
-Commit `616a60f` — adiciona auto-correção de rota de completions nos proxies de borda.
+Commit `84ef02e` — remove prefixo do fornecedor (ex: "xiaomi/") do nome do modelo nos proxies.
 
 ## Arquivos relevantes
 - `src/services/geminiService.ts` — Serviços de IA apontando para o novo proxy `/api/opencode-proxy`
-- `api/opencode-proxy.ts` — Novo proxy Vercel Edge integrado ao OpenCode Go com auto-correção
-- `api/openrouter-proxy.ts` — Proxy compatível integrado com a mesma lógica de auto-correção
+- `api/opencode-proxy.ts` — Proxy Edge integrado com auto-correção de endpoint e sanitização de modelo
+- `api/openrouter-proxy.ts` — Proxy compatível integrado com a mesma lógica de auto-correção e sanitização
 - `vite.config.ts` — Definições de ambiente do Vite atualizadas para OpenCode
 
 ## Pendências imediatas
