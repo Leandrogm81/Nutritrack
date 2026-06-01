@@ -12,12 +12,24 @@ export default async function handler(req: Request) {
 
     let targetUrlStr = process.env.OPENCODE_API_URL || 'https://opencode.ai/zen/go/v1/chat/completions';
     // Ensure targetUrlStr ends with /chat/completions for OpenAI compatibility.
-    // If the user provided a base URL like https://opencode.ai/zen/go/v1, we append it automatically.
     if (!targetUrlStr.includes('/chat/completions')) {
       targetUrlStr = targetUrlStr.replace(/\/$/, '') + '/chat/completions';
     }
 
     const targetUrl = new URL(targetUrlStr);
+
+    // Read and parse request body to strip vendor prefixes like "xiaomi/" for OpenCode Go compatibility
+    let bodyText = await req.text();
+    try {
+      const bodyObj = JSON.parse(bodyText);
+      if (bodyObj && typeof bodyObj.model === 'string' && bodyObj.model.startsWith('xiaomi/')) {
+        console.log(`Rewriting model name from ${bodyObj.model} to ${bodyObj.model.replace(/^xiaomi\//, '')} for OpenCode compatibility`);
+        bodyObj.model = bodyObj.model.replace(/^xiaomi\//, '');
+        bodyText = JSON.stringify(bodyObj);
+      }
+    } catch (e) {
+      // Non-JSON body or parse error, keep original bodyText
+    }
 
     const headers = new Headers(req.headers);
     headers.delete('host');
@@ -27,7 +39,7 @@ export default async function handler(req: Request) {
     const proxyRes = await fetch(targetUrl.toString(), {
       method: req.method,
       headers,
-      body: req.body,
+      body: bodyText,
       duplex: 'half',
     } as any);
 
