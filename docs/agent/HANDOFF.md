@@ -1,12 +1,14 @@
 # Handoff — Continuidade de Sessão
 
 ## 1. Objetivo atual
-Tornar o NutriTrack MVP v1.2.6 instalável como app Android (PWA), com integração de IA rodando via OpenCode Go (`https://opencode.ai/zen/go/v1`) com o modelo `mimo-v2.5`, mitigando erros de cache PWA e ajustando os nomes dos modelos em tempo de execução.
+Tornar o NutriTrack MVP v1.2.7 instalável como app Android (PWA), com integração de IA rodando via OpenCode Go (`https://opencode.ai/zen/go/v1`) com o modelo `mimo-v2.5`, mitigando erros de cache PWA, corrigindo caminhos e prevenindo timeouts de conexão.
 
 ## 2. Estado geral do projeto
-MVP completo. Código publicado no GitHub (`main`, commit `84ef02e`). Deploy Vercel automático disparado pelo push. Integração de IA migrada de OpenCode Go de forma bem-sucedida. Ambos os proxies `/api/openrouter-proxy` e `/api/opencode-proxy` contam com tolerância a falhas na URL do endpoint e na nomenclatura do modelo, reescrevendo `xiaomi/mimo-v2.5` para `mimo-v2.5` no payload enviado para a OpenCode Go.
+MVP completo. Código publicado no GitHub (`main`, commit `d31c324`). Deploy Vercel automático disparado pelo push. Integração de IA migrada de OpenCode Go de forma estável. Ambos os proxies `/api/openrouter-proxy` e `/api/opencode-proxy` contam com tolerância a falhas na URL, na nomenclatura do modelo e na transmissão do corpo de requisição (resolvida pendência de timeout HTTP 504 no Edge runtime).
 
 ## 3. O que já foi feito nesta sessão
+- **Prevenção de Timeouts de Conexão (HTTP 504)**:
+  - Removida a propriedade `duplex: 'half'` dos métodos `fetch` de ambos os proxies Edge. Como o corpo da requisição foi convertido para string (`bodyText`) para suportar a sanitização de nomes de modelo, manter `duplex: 'half'` fazia a conexão de rede aguardar indefinitely o fechamento de um fluxo inexistente, travando até expirar o tempo limite de 25 segundos da Vercel.
 - **Sanitização de nome de modelo**:
   - Implementada a interceptação e reescrita do corpo da requisição JSON nos proxies de borda. Prefixo de vendor/autor (ex: `xiaomi/`) é removido antes de enviar a requisição ao endpoint da OpenCode Go, resolvendo erros de modelo não suportado (HTTP 401).
 - **Auto-correção de endpoints**:
@@ -19,7 +21,7 @@ MVP completo. Código publicado no GitHub (`main`, commit `84ef02e`). Deploy Ver
 - **Otimização do menu inferior**: tamanho de fonte reduzido para `8px` e padding reduzido no mobile no componente `NavButton` (`src/App.tsx`), evitando quebras de layout.
 - **PWA Imagens Hardening & Logotipo**: formato dos ícones corrigido e logotipo `favicon.svg` inserido no cabeçalho.
 - **Compilação e validação do build de produção**: `npm run build` e testes executados e bem-sucedidos.
-- **Git Commit & Push**: commits `93ccddb`, `9f791cb`, `f301ee5`, `d506fa2`, `616a60f`, `d506fa2` e `84ef02e` enviados ao repositório remoto.
+- **Git Commit & Push**: commits `93ccddb`, `9f791cb`, `f301ee5`, `d506fa2`, `616a60f`, `d506fa2`, `84ef02e` e `d31c324` enviados ao repositório remoto.
 
 ## 4. Decisões tomadas
 - **Renomeação do Proxy**: preferiu-se renomear o arquivo e rota do proxy para `/api/opencode-proxy.ts` para manter a coerência semântica com o novo provedor, mas a lógica da chamada mantém compatibilidade com chaves anteriores.

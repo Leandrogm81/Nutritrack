@@ -1,15 +1,15 @@
 # Current State
 
 ## Estado atual
-MVP v1.2.6 publicado no GitHub (`main`, commit `84ef02e`). Integração de IA migrada de OpenRouter para OpenCode Go (`https://opencode.ai/zen/go/v1/chat/completions`), mantendo o modelo `xiaomi/mimo-v2.5` no código do cliente. Os proxies de borda agora removem automaticamente prefixos de fornecedor (ex: transformando `xiaomi/mimo-v2.5` em `mimo-v2.5` para o request) garantindo total compatibilidade com o catálogo direto da OpenCode Go.
+MVP v1.2.7 publicado no GitHub (`main`, commit `d31c324`). Integração de IA migrada de OpenRouter para OpenCode Go (`https://opencode.ai/zen/go/v1/chat/completions`), mantendo o modelo `xiaomi/mimo-v2.5` no cliente. Removida a propriedade `duplex: 'half'` nos proxies Edge ao tratar corpos de requisição baseados em string, mitigando de forma definitiva travamentos de conexão e erros de Timeout (HTTP 504).
 
 ## Última ação relevante
-Commit `84ef02e` — remove prefixo do fornecedor (ex: "xiaomi/") do nome do modelo nos proxies.
+Commit `d31c324` — remove propriedade duplex de fetch para evitar travamentos e timeouts HTTP 504.
 
 ## Arquivos relevantes
 - `src/services/geminiService.ts` — Serviços de IA apontando para o novo proxy `/api/opencode-proxy`
-- `api/opencode-proxy.ts` — Proxy Edge integrado com auto-correção de endpoint e sanitização de modelo
-- `api/openrouter-proxy.ts` — Proxy compatível integrado com a mesma lógica de auto-correção e sanitização
+- `api/opencode-proxy.ts` — Proxy Edge integrado sem duplex e com auto-correção e sanitização
+- `api/openrouter-proxy.ts` — Proxy compatível sem duplex e com a mesma lógica de auto-correção e sanitização
 - `vite.config.ts` — Definições de ambiente do Vite atualizadas para OpenCode
 
 ## Pendências imediatas
