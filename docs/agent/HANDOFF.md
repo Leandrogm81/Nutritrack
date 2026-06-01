@@ -1,20 +1,21 @@
 # Handoff — Continuidade de Sessão
 
 ## 1. Objetivo atual
-Tornar o NutriTrack MVP v1.2.3 instalável como app Android (PWA), com integração de IA rodando via OpenCode Go (`https://opencode.ai/zen/go/v1`) com o modelo `xiaomi/mimo-v2.5`, exibindo o novo logotipo no cabeçalho.
+Tornar o NutriTrack MVP v1.2.4 instalável como app Android (PWA), com integração de IA rodando via OpenCode Go (`https://opencode.ai/zen/go/v1`) com o modelo `xiaomi/mimo-v2.5`, mitigando erros de cache PWA.
 
 ## 2. Estado geral do projeto
-MVP completo. Código publicado no GitHub (`main`, commit `93ccddb`). Deploy Vercel automático disparado pelo push. Integração de IA migrada de OpenRouter para OpenCode Go de forma bem-sucedida, renomeando o proxy de borda `/api/openrouter-proxy` para `/api/opencode-proxy`. O proxy suporta chaves `OPENCODE_API_KEY`, `OPENCODE_GO_API_KEY` ou `OPENROUTER_API_KEY` para retrocompatibilidade.
+MVP completo. Código publicado no GitHub (`main`, commit `f301ee5`). Deploy Vercel automático disparado pelo push. Integração de IA migrada de OpenRouter para OpenCode Go de forma bem-sucedida. O proxy de borda `/api/openrouter-proxy` foi recriado como um alias/wrapper apontando para `/api/opencode-proxy` para evitar erro HTTP 405 em clientes que possuam a versão anterior da aplicação em cache no navegador.
 
 ## 3. O que já foi feito nesta sessão
+- **Mitigação de Erros de Cache**:
+  - Recriada a rota `/api/openrouter-proxy.ts` re-exportando as configurações e o handler do novo `/api/opencode-proxy.ts`, garantindo que requisições de clientes legados continuem funcionando.
 - **Migração para OpenCode Go**:
   - Criado o edge proxy `/api/opencode-proxy.ts` apontando para `https://opencode.ai/zen/go/v1/chat/completions` (suporta `OPENCODE_API_KEY`, `OPENCODE_GO_API_KEY` ou fallback para `OPENROUTER_API_KEY`).
-  - Removido o proxy antigo `api/openrouter-proxy.ts`.
   - Atualizado `src/services/geminiService.ts` e `vite.config.ts` para usar o novo proxy e as novas definições de modelo.
 - **Otimização do menu inferior**: tamanho de fonte reduzido para `8px` e padding reduzido no mobile no componente `NavButton` (`src/App.tsx`), evitando quebras de layout.
 - **PWA Imagens Hardening & Logotipo**: formato dos ícones corrigido e logotipo `favicon.svg` inserido no cabeçalho.
-- **Compilação e validação do build de produção**: `npm run build` e testes executados e bem-sucedidos.
-- **Git Commit & Push**: commits `93ccddb` e `9f791cb` enviados ao repositório remoto.
+- **Compilação e validação do build de produção**: `npm run build` e testes executados e bem-sucedido.
+- **Git Commit & Push**: commits `93ccddb`, `9f791cb` e `f301ee5` enviados ao repositório remoto.
 
 ## 4. Decisões tomadas
 - **Renomeação do Proxy**: preferiu-se renomear o arquivo e rota do proxy para `/api/opencode-proxy.ts` para manter a coerência semântica com o novo provedor, mas a lógica da chamada mantém compatibilidade com chaves anteriores.

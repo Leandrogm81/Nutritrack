@@ -1,14 +1,15 @@
 # Current State
 
 ## Estado atual
-MVP v1.2.3 publicado no GitHub (`main`, commit `93ccddb`). Integração de IA migrada de OpenRouter para OpenCode Go (`https://opencode.ai/zen/go/v1/chat/completions`), mantendo o modelo `xiaomi/mimo-v2.5`. O proxy de borda `/api/opencode-proxy.ts` substituiu o proxy do OpenRouter. Deploy Vercel automático disparado.
+MVP v1.2.4 publicado no GitHub (`main`, commit `f301ee5`). Integração de IA migrada de OpenRouter para OpenCode Go (`https://opencode.ai/zen/go/v1/chat/completions`), mantendo o modelo `xiaomi/mimo-v2.5`. O proxy `/api/openrouter-proxy.ts` foi recriado como um wrapper/alias compatível direcionando para `/api/opencode-proxy.ts` para mitigar erros 405 em clientes com Service Worker/PWA cacheados.
 
 ## Última ação relevante
-Commit `93ccddb` — migra proxy de borda e serviços de IA de OpenRouter para OpenCode Go.
+Commit `f301ee5` — recria openrouter-proxy como wrapper de compatibilidade.
 
 ## Arquivos relevantes
 - `src/services/geminiService.ts` — Serviços de IA apontando para o novo proxy `/api/opencode-proxy`
 - `api/opencode-proxy.ts` — Novo proxy Vercel Edge integrado ao OpenCode Go
+- `api/openrouter-proxy.ts` — Wrapper de compatibilidade retrógrada para clientes com cache
 - `vite.config.ts` — Definições de ambiente do Vite atualizadas para OpenCode
 
 ## Pendências imediatas
