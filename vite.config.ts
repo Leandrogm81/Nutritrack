@@ -13,6 +13,19 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
+        workbox: {
+          // Force new SW to activate immediately — no waiting for old tabs to close
+          skipWaiting: true,
+          clientsClaim: true,
+          // Cache strategies
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: { cacheName: 'google-fonts-cache', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } }
+            }
+          ]
+        },
         manifest: {
           name: 'NutriTrack',
           short_name: 'NutriTrack',
