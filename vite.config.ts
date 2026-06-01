@@ -61,8 +61,7 @@ export default defineConfig(({mode}) => {
     define: {
       // SECURITY: API keys are NOT injected into the client bundle.
       // The secrets live exclusively in the Vercel server environment (no VITE_ prefix).
-      // All AI calls go through /api/opencode-proxy.ts.
-      'process.env.VITE_OPENCODE_MODEL': JSON.stringify(env.VITE_OPENCODE_MODEL || env.VITE_OPENROUTER_MODEL || 'xiaomi/mimo-v2.5'),
+      // All AI calls go through /api/openrouter-proxy.ts.
       'process.env.VITE_OPENROUTER_MODEL': JSON.stringify(env.VITE_OPENROUTER_MODEL || 'xiaomi/mimo-v2.5'),
     },
     resolve: {

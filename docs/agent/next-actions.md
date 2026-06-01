@@ -1,10 +1,14 @@
 # Próximas Ações
 
-## Prioridade 1 — Validar correção de headers do proxy IA
-- [ ] Commitar e enviar sanitização de headers em `api/opencode-proxy.ts` e `api/openrouter-proxy.ts`
-- [ ] Aguardar deploy Vercel contendo a sanitização completar
-- [ ] Repetir o fluxo que gerou `net::ERR_CONTENT_DECODING_FAILED` em `/api/opencode-proxy`
-- [ ] Confirmar se a chamada passa; se ainda falhar, consultar logs Vercel/Dashboard para status upstream e possível restrição de uso/credencial OpenCode Go
+## Prioridade 1 — Voltar IA para OpenRouter
+- [x] Rodar `npm run lint`
+- [x] Rodar `npm run test -- --run`
+- [x] Rodar `npm run build`
+- [ ] Commitar e enviar a reversão para OpenRouter
+- [ ] Confirmar na Vercel que `OPENROUTER_API_KEY` existe
+- [ ] Remover/ignorar `OPENCODE_API_KEY`, `OPENCODE_GO_API_KEY` e `OPENCODE_API_URL` para evitar nova cobrança na OpenCode
+- [ ] Aguardar deploy Vercel completar
+- [ ] Testar uma única chamada simples no Gerador de Dieta
 
 ## Prioridade 2 — Confirmação de instalação Android (ação humana)
 - [ ] Aguardar deploy Vercel completar após o próximo commit (~1-2 minutos)

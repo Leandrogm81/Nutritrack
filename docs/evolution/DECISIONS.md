@@ -159,3 +159,20 @@ O nome \geminiService.ts\ foi mantido para evitar o \reaking change\ massivo na
 ### Status
 ativa
 
+
+## 2026-06-01 - Retorno operacional para OpenRouter apos falha com OpenCode Go
+
+### Contexto
+Durante a validacao em producao, a rota temporaria via OpenCode Go gerou `FUNCTION_INVOCATION_TIMEOUT`, `ERR_CONTENT_DECODING_FAILED` e consumo de tokens na OpenCode sem retorno util ao app.
+
+### Decisao
+Retornar a integracao principal de IA para OpenRouter usando `/api/openrouter-proxy.ts`, `OPENROUTER_API_KEY` server-side e o modelo `xiaomi/mimo-v2.5`. A rota `/api/opencode-proxy.ts` fica apenas como compatibilidade de cache/PWA antigo, roteando tambem para OpenRouter e sem ler variaveis `OPENCODE_*`.
+
+### Motivo
+Evitar novas cobrancas na OpenCode durante falhas de proxy/producao e voltar a configuracao originalmente aprovada e documentada para o MVP.
+
+### Impacto
+A Vercel deve ter `OPENROUTER_API_KEY` configurada. Variaveis `OPENCODE_API_KEY`, `OPENCODE_GO_API_KEY`, `OPENCODE_API_URL` e `VITE_OPENCODE_MODEL` deixam de ser necessarias para o app.
+
+### Status
+ativa

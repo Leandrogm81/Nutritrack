@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2026-06-01 - Retorno da IA para OpenRouter
+
+### Resumo
+- Restaurada a rota principal de IA para `/api/openrouter-proxy`.
+- `api/openrouter-proxy.ts` voltou a apontar para `https://openrouter.ai/api/v1/chat/completions`.
+- `api/opencode-proxy.ts` foi mantido apenas como compatibilidade para caches/PWA antigos, mas roteando para OpenRouter e sem uso de variáveis `OPENCODE_*`.
+- Removido uso de `VITE_OPENCODE_MODEL` no build.
+- Atualizados `.env.example`, README e arquivos de continuidade.
+
+### Motivo
+Encerrar a tentativa com OpenCode Go após erros em produção e consumo de tokens sem retorno útil ao app.
+
+### Evidência
+- `npm run lint` passou.
+- `npm run test -- --run` passou (7 arquivos, 23 testes).
+- `npm run build` passou; warning de chunk size permanece não bloqueante.
+
 ## 2026-06-01 - PWA Android Hardening & Logo Header Update (v1.2.1)
 
 ### Resumo

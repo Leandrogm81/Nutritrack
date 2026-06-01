@@ -1,16 +1,17 @@
 # Current State
 
 ## Estado atual
-MVP v1.2.7 no `main`. A correção de código `66ef857` migrou os proxies de IA para Vercel Node runtime para sair do limite de Edge. Após deploy, o usuário reportou novo erro em produção: `/api/opencode-proxy` com `net::ERR_CONTENT_DECODING_FAILED`.
+MVP v1.2.7 no `main`. Após falhas reais com OpenCode Go em produção (`FUNCTION_INVOCATION_TIMEOUT`, `ERR_CONTENT_DECODING_FAILED`) e consumo de tokens na OpenCode sem retorno útil ao app, a integração de IA foi revertida para OpenRouter.
 
 ## Última ação relevante
-Correção local preparada para o novo erro: `api/opencode-proxy.ts` e `api/openrouter-proxy.ts` deixaram de repassar headers brutos do upstream na resposta. O proxy agora retorna apenas `Content-Type` e `Cache-Control`, evitando repassar `content-encoding`/`content-length` incompatíveis quando o Node fetch já descompactou o corpo.
+Configuração OpenRouter restaurada localmente: `src/services/geminiService.ts` volta a chamar `/api/openrouter-proxy`; `api/openrouter-proxy.ts` aponta para `https://openrouter.ai/api/v1/chat/completions`; `api/opencode-proxy.ts` fica apenas como rota compatível para clientes PWA antigos, mas também roteia para OpenRouter e não lê `OPENCODE_*`.
 
 ## Arquivos relevantes
-- `api/opencode-proxy.ts` — proxy principal OpenCode Go em Node runtime, com timeout controlado e headers de resposta sanitizados
-- `api/openrouter-proxy.ts` — proxy compatível/cache legado com mesma correção
-- `vercel.json` — `maxDuration` de 60s para os proxies de IA
-- `src/services/geminiService.ts` — cliente IA apontando para `/api/opencode-proxy`
+- `src/services/geminiService.ts` — cliente IA apontando para `/api/openrouter-proxy`
+- `api/openrouter-proxy.ts` — proxy principal OpenRouter em Node runtime, com timeout e headers sanitizados
+- `api/opencode-proxy.ts` — endpoint compatível/cache legado, roteando para OpenRouter
+- `vite.config.ts` — expõe apenas `VITE_OPENROUTER_MODEL`
+- `.env.example` — atualizado para `OPENROUTER_API_KEY`
 
 ## Validações executadas
 - `npm run lint` passou
@@ -18,16 +19,16 @@ Correção local preparada para o novo erro: `api/opencode-proxy.ts` e `api/open
 - `npm run build` passou (warning de chunk size permanece não bloqueante)
 
 ## Pendências imediatas
-- Commitar/pushar a correção de `ERR_CONTENT_DECODING_FAILED`
-- Aguardar deploy Vercel contendo a sanitização de headers
-- Retestar chamada de IA em produção após deploy
+- Confirmar que a Vercel possui `OPENROUTER_API_KEY`
+- Remover/ignorar `OPENCODE_API_KEY`, `OPENCODE_GO_API_KEY` e `OPENCODE_API_URL` na Vercel
+- Commitar/pushar a volta para OpenRouter
+- Retestar Gerador de Dieta em produção após deploy
 
 ## Riscos atuais
-- Se a OpenCode Go demorar mais de 55s, o app receberá 504 controlado do proxy
-- Se continuar falhando após sanitização de headers, será necessário consultar logs Vercel/Dashboard e confirmar política/credencial da OpenCode Go
-- Smoke-test de instalação física no Android ainda não finalizado
+- Se `VITE_OPENCODE_MODEL` ainda existir em cache/build antigo, pode haver confusão; o novo build não usa essa variável
+- Se o PWA Android estiver com service worker antigo, pode continuar chamando `/api/opencode-proxy`; essa rota foi mantida compatível e aponta para OpenRouter
 
 ## Não fazer agora
-- Não voltar os proxies para Edge runtime para fluxos longos de IA
-- Não repassar `content-encoding`/`content-length` brutos do upstream
-- Não abrir novas sprints sem decisão humana
+- Não voltar para OpenCode Go sem decisão humana
+- Não adicionar guardrails de custo por enquanto, a pedido do usuário
+- Não usar `VITE_OPENROUTER_API_KEY`

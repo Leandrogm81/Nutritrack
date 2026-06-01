@@ -56,8 +56,8 @@ NutriTrack é um PWA (Progressive Web App) que permite registrar refeições, á
 | Frontend | React + TypeScript + Vite |
 | Estilo | Tailwind CSS v4 |
 | PWA | vite-plugin-pwa (Workbox) |
-| IA | OpenRouter API (`xiaomi/mimo-v2.5`) via proxy Vercel Edge |
-| Proxy | `/api/openrouter-proxy.ts` (Vercel Edge Function) |
+| IA | OpenRouter API (`xiaomi/mimo-v2.5`) via proxy Vercel |
+| Proxy | `/api/openrouter-proxy.ts` (Vercel Node Function) |
 | Persistência | localStorage (local-first) |
 | Testes | Vitest (23 testes unitários) |
 | Deploy | Vercel |
@@ -153,7 +153,7 @@ O deploy é automático a cada push na branch `main`.
 ```
 /
 ├── api/
-│   └── openrouter-proxy.ts     # Proxy Vercel Edge — único canal para IA
+│   └── openrouter-proxy.ts     # Proxy Vercel Node — único canal para IA
 ├── src/
 │   ├── components/             # Componentes React (Dashboard, MealForm, WorkoutTracker, ...)
 │   ├── services/
