@@ -2,114 +2,126 @@
 
 ## 1. Objetivo atual
 
-Auditoria final do MVP NutriTrack concluída. O projeto aguarda correção do bloqueador crítico de segurança (chave de API exposta ao cliente) e smoke-test visual humano antes de qualquer deploy público.
+Tornar o NutriTrack MVP v1.2.0 instalável como app Android (PWA) e disponível via GitHub/Vercel, mantendo-o como web app.
 
 ## 2. Estado geral do projeto
 
-Sprint 10 concluída. Auditoria final executada e salva em `/docs/audit/final-audit.md`. Correção pós-auditoria executada em 2026-06-01 e salva em `/docs/audit/audit-fixes.md`. Bloqueador crítico de segurança (chave da API de IA exposta ao bundle do cliente) **corrigido**. Build limpo, lint aprovado, 23 testes unitários passando. Veredito atual: **Pronto para teste interno — aguardando ações humanas antes do deploy público**.
+MVP completo. Código commitado e publicado no GitHub (`main`, commit `13b45ea`). Vercel com deploy automático ativado — o último push (`13b45ea`) deve ter disparado um novo deploy. Os problemas de instalação PWA no Android foram diagnosticados e corrigidos nesta sessão: ícone redimensionado, `skipWaiting` adicionado, headers do `vercel.json` corrigidos. O smoke-test de instalação no Android ainda não foi executado pelo usuário — é a próxima ação humana pendente.
 
 ## 3. O que já foi feito
 
-- Sprint 10 (Validação Final): 23 testes unitários passando via Vitest (`rollover`, `stateMigration`, `domain`, `activity`, `planner`, `validateBackup`).
-- Build PWA v1.2.0 limpo (`npm run build` — sucesso; `dist/sw.js` gerado).
-- Linter aprovado (`npm run lint` — sucesso).
-- Migração da IA do Gemini (SDK Google) para OpenRouter (`xiaomi/mimo-v2.5`) via proxy Vercel.
-- Proxy Vercel criado em `/api/openrouter-proxy.ts`.
-- Auditoria final executada e salva em `/docs/audit/final-audit.md` (2026-06-01).
-- AUDIT_EVIDENCE.md atualizado com evidências das Sprints 0–10.
+- **Commit e push do MVP completo** (`a46bd87`): 94 arquivos, Sprints 1–10, segurança, testes, documentação
+- **README reescrito** (`7db53ba`): cobre produto, stack, setup, deploy, status atual
+- **Boilerplate AI Studio removido** (`cbde6e9`): `index.html`, `package.json`, `vite.config.ts`, `package-lock.json`
+- **Variáveis de ambiente Vercel documentadas**: `OPENROUTER_API_KEY` (servidor, sem `VITE_`); `VITE_OPENROUTER_MODEL` (opcional)
+- **Auditoria pós-correção independente** executada: 23 testes passando, build limpo, bundle sem chave exposta. Relatório em `/docs/audit/validation-report.md`
+- **PWA Android hardening** (`a27922e` + `13b45ea`):
+  - `public/pwa-192x192.png` criado e **redimensionado para 192×192 real** via sharp (era 512×512 com nome errado — bloqueava instalação)
+  - `public/pwa-512x512.png` criado
+  - `public/pwa-maskable-512x512.png` criado (adaptive icon Android)
+  - `public/favicon.svg` criado
+  - `vite.config.ts`: manifest completo (`start_url`, `scope`, `orientation`, `lang pt-BR`, `background_color`, ícone maskable)
+  - `vite.config.ts`: `skipWaiting: true` + `clientsClaim: true` no Workbox (sem isso, SW antigo nunca liberava controle)
+  - `vercel.json`: `sw.js` e `manifest.webmanifest` com `no-cache`; `/api/*` excluído do rewrite SPA; `Content-Type` do manifest corrigido
+  - `index.html`: `theme-color`, `mobile-web-app-capable`, `apple-touch-icon`, `favicon` links
 
 ## 4. Decisões tomadas
 
-- Migração da IA para OpenRouter com modelo `xiaomi/mimo-v2.5` — registrada em DECISIONS.md (2026-06-01).
-- Regra oficial de gasto energético: passos registram apenas volume, sem conversão para kcal — registrada em DECISIONS.md (2026-06-01).
-- Snapshot de metas no histórico diário (`DailyHistoryEntry.goals`) — registrada em DECISIONS.md (2026-05-30).
+- **Ícones gerados por IA** (fundo verde, letra N, haltere, folha) — usuário mostrou design próprio mas o arquivo PNG não foi fornecido; ícones de fallback foram usados. Usuário deve substituir se quiser o ícone próprio.
+- **sharp adicionado como devDependency** para redimensionamento de ícones (necessário para gerar 192×192 real).
+- **`skipWaiting: true`** — decisão de ativar SW imediatamente em novo deploy (trade-off: pode causar reload inesperado em tabs abertas; aceitável para MVP).
+- **`vercel.json` sem cache para SW/manifest** — evita que atualizações fiquem presas no cache do browser por até 1 ano.
 
 ## 5. Arquivos importantes
 
 | Arquivo | Função | Observação |
 |---|---|---|
-| `/docs/audit/final-audit.md` | Resultado da auditoria final | Gerado em 2026-06-01; contém checklist de deploy |
-| `/docs/audit/audit-fixes.md` | Relatório de correção pós-auditoria | Gerado em 2026-06-01; documenta o que foi corrigido e validado |
-| `/src/services/geminiService.ts` | Serviço de IA (OpenRouter) | **Corrigido:** `getApiKey()` retorna `undefined`; sem chave no cliente |
-| `/api/openrouter-proxy.ts` | Proxy Vercel para IA | Correto e inalterado; canal exclusivo para chamadas de IA em produção |
-| `/vite.config.ts` | Config de build | **Corrigido:** `OPENROUTER_API_KEY` removido do bloco `define` |
-| `/docs/evolution/out-of-scope-changes.md` | Mudanças fora de escopo | Criado em 2026-06-01; documenta migração Gemini→OpenRouter, `analyzeGymEquipment`, `suggestRecipes` |
-| `src/utils/*.test.ts` | Testes unitários | 23 testes passando |
-| `/docs/evolution/CHANGELOG.md` | Histórico de mudanças | Encoding corrompido nas Sprints 3–8 (UTF-16 misturado com ANSI) |
+| `public/pwa-192x192.png` | Ícone PWA 192×192 | Redimensionado via sharp; confirmar dimensão real |
+| `public/pwa-512x512.png` | Ícone PWA 512×512 | Imagem gerada por IA |
+| `public/pwa-maskable-512x512.png` | Adaptive icon Android | Necessário para launchers modernos |
+| `public/favicon.svg` | Favicon tab browser | SVG baseado nas cores do app |
+| `vite.config.ts` | Config Vite + PWA manifest | Workbox com skipWaiting; manifest completo |
+| `vercel.json` | Roteamento e headers Vercel | SW/manifest sem cache; API excluída do rewrite |
+| `index.html` | HTML raiz | Meta tags Android/iOS adicionadas |
+| `src/services/geminiService.ts` | Serviço de IA | `getApiKey()` retorna `undefined`; proxy exclusivo |
+| `api/openrouter-proxy.ts` | Proxy Vercel Edge | Canal exclusivo para OpenRouter |
+| `docs/audit/validation-report.md` | Relatório de validação independente | Bloqueador de segurança confirmado resolvido |
 
 ## 6. Problemas encontrados
 
-- **CRÍTICO:** `getApiKey()` em `geminiService.ts` lê `VITE_OPENROUTER_API_KEY` via `import.meta.env`. Em Vite, variáveis com prefixo `VITE_` são injetadas no bundle público. Isso expõe a chave da API ao usuário final em qualquer deploy com essa variável configurada.
-- **ALTO:** Nenhum smoke-test visual, screenshot ou teste E2E foi executado. Bugs de UI, layout mobile, estados vazios e comportamento offline no browser não estão descartados.
-- **ALTO:** Avisos de IA e privacidade (obrigatórios no PRD) não verificados — texto final ainda não aprovado por humano.
-- **ALTO:** Imagens usadas na análise de IA: sem verificação de não-persistência nos componentes de UI.
-- **MÉDIO:** CHANGELOG.md com encoding corrompido a partir da Sprint 3 (blocos com null bytes UTF-16).
-- **MÉDIO:** `/docs/evolution/out-of-scope-changes.md` não existe; mudanças fora de escopo não rastreadas.
-- **MÉDIO:** Variáveis de ambiente da Vercel não atualizadas (citado no CHANGELOG Sprint 9).
+- **Ícone 192×192 com dimensão errada**: arquivo 512×512 copiado com nome 192×192. Chrome Android rejeita instalação quando dimensão real difere do manifest. Corrigido via sharp nesta sessão.
+- **Service worker nunca atualizava**: `sw.js` estava sendo servido com `Cache-Control: immutable` (1 ano). Corrigido com `no-cache` no `vercel.json`.
+- **SW antigo nunca liberava controle**: sem `skipWaiting`, o usuário precisaria fechar todas as abas para o novo SW ativar. Corrigido.
+- **Rewrite SPA bloqueava `/api/`**: o rewrite global `(.*)→index.html` poderia interceptar chamadas à Edge Function. Corrigido com exclusão explícita de `/api/*`.
+- **Ícone próprio do usuário não fornecido**: o usuário mostrou um design de ícone mas não forneceu o arquivo PNG. Os ícones no projeto são gerados por IA.
+- **CHANGELOG.md com encoding corrompido** (Sprints 3–8): persiste; não tratado nesta sessão.
+- **Smoke-test de instalação Android não executado**: confirmação real de funcionamento pendente.
 
 ## 7. Tentativas realizadas
 
 | Tentativa | Resultado | Observação |
 |---|---|---|
-| Leitura do CHANGELOG.md via `view_file` | Falhou | Encoding UTF-16 causou erro de mime-type na ferramenta |
-| Leitura do CHANGELOG.md via PowerShell `Get-Content` | Parcial | Sprints 0–2 e Sprint 9 legíveis; Sprints 3–8 com null bytes |
-| Leitura direta de `geminiService.ts` | Funcionou | Revelou bloqueador crítico de segurança na linha 3 |
-| Geração do `final-audit.md` | Funcionou | Arquivo criado em `/docs/audit/final-audit.md` |
+| Copiar 512×512 como 192×192 | Falhou | Chrome rejeita; corrigido com sharp |
+| Gerar ícone com `generate_image` (design do usuário como referência) | Parcial | Ícone gerado mas não é o design exato do usuário |
+| `vite.config.ts` via `replace_file_content` | Falhou (arquivo corrompido) | Arquivo reescrito do zero com `write_to_file` |
+| Build com novo `vercel.json` e `skipWaiting` | Passou | `✓ built in 10.85s`, `workbox-66610c77.js` (novo hash) |
 
 ## 8. O que funcionou
 
-- Leitura integral do PRD.md (1.166 linhas).
-- Leitura do PLANO_IMPLEMENTACAO.md, HANDOFF.md, CURRENT_STATE.md, DECISIONS.md, AUDIT_EVIDENCE.md.
-- Leitura direta do código-fonte de `geminiService.ts` — revelou achado crítico confirmado.
-- Geração completa do relatório de auditoria final com 17 seções.
+- Redimensionamento com sharp: 192×192 real, 37KB (era 383KB)
+- Build de produção: passou sem erros após todas as correções
+- `skipWaiting` + `clientsClaim`: incorporados no Workbox (novo hash do workbox confirma)
+- `vercel.json` com headers corretos: SW/manifest sem cache
+- Commit e push de todas as correções: `13b45ea` publicado
 
 ## 9. O que não funcionou
 
-- Leitura nativa do CHANGELOG.md via ferramenta de arquivo (encoding incompatível).
-- Sem acesso a evidências visuais (screenshots, gravações, E2E).
-- Sem acesso a logs de deploy da Vercel.
+- `replace_file_content` em `vite.config.ts`: corrompeu o arquivo (substituição aplicou apenas parte da mudança). Solução: `write_to_file` com conteúdo completo.
+- Instalação no Android ainda não confirmada pelo usuário.
 
 ## 10. Pendências
 
 | Pendência | Impacto | Prioridade |
 |---|---|---|
-| Atualizar variáveis de ambiente na Vercel (remover `VITE_OPENROUTER_API_KEY`; garantir `OPENROUTER_API_KEY` apenas no servidor) | Deploy seguro | Alta |
-| Smoke-test visual humano do fluxo principal | Identificar bugs de UI antes do deploy | Alta |
-| Aprovação humana do texto dos avisos de IA e privacidade | Requisito obrigatório do PRD | Alta |
-| Implementar avisos de IA após aprovação do texto | Requisito obrigatório do PRD | Alta |
-| Verificar não-persistência de imagens após análise de IA | **Confirmado seguro** por leitura de código — sem ação adicional necessária | ~~Alta~~ Resolvida |
-| Corrigir encoding do CHANGELOG.md (Sprints 3–8) | Manutenibilidade e auditabilidade | Média |
+| Smoke-test de instalação Android (Chrome → Adicionar à tela inicial) | Confirma se PWA está funcional | Alta |
+| Limpar cache do browser no celular do usuário antes de testar | Sem isso, SW antigo pode persistir | Alta |
+| Confirmar variáveis de ambiente na Vercel (dashboard) | Sem `OPENROUTER_API_KEY` servidor, IA falha | Alta |
+| Substituir ícones gerados pelo ícone real do usuário | Ícone atual não é o design fornecido pelo usuário | Média |
+| Avisos de IA e privacidade na interface (PRD seção 20.8) | Requisito PRD; pendência de aprovação de texto | Alta |
+| Smoke-test visual completo do fluxo principal | Não executado | Alta |
+| Corrigir encoding do CHANGELOG.md | Documental; não bloqueante | Baixa |
 
 ## 11. Riscos
 
 | Risco | Área | Severidade | Observação |
 |---|---|---|---|
-| Chave de API exposta ao bundle do cliente | Segurança | Alta | Confirmado por leitura do código-fonte |
-| Bugs visuais não detectados | UI/UX | Média | Nenhum teste visual foi executado |
-| Modelo `xiaomi/mimo-v2.5` sem validação de qualidade | Produto/IA | Média | Mudança de modelo não testada em contexto de produto |
-| Service worker offline não testado em produção | Confiabilidade | Média | Build local OK; comportamento em Vercel não verificado |
-| Encoding corrompido no CHANGELOG | Manutenibilidade | Média | Dificulta auditorias futuras das Sprints 3–8 |
+| Vercel deploy ainda não concluído no momento do teste | Deploy | Alta | Aguardar 1–2 min após push antes de testar |
+| Ícone gerado por IA ≠ ícone do usuário | UX | Média | Usuário deve fornecer PNG para substituição |
+| Smoke-test não executado | QA | Alta | Instalação real não confirmada |
+| Variáveis de ambiente na Vercel não verificadas | Segurança/Produto | Alta | IA pode falhar sem `OPENROUTER_API_KEY` |
+| CHANGELOG.md com encoding corrompido | Documental | Baixa | Histórico das Sprints 3–8 ilegível por ferramentas |
 
 ## 12. Próxima ação recomendada
 
-1. Atualizar variáveis de ambiente na Vercel: remover qualquer variável `VITE_OPENROUTER_API_KEY`; garantir que `OPENROUTER_API_KEY` existe sem prefixo `VITE_` como variável de servidor.
-2. Executar smoke-test visual humano e documentar resultado em `/docs/audit/`.
-3. Obter aprovação do texto dos avisos de IA e privacidade.
-4. Após aprovação, implementar avisos nos locais exigidos pelo PRD.
-5. Fazer deploy após os itens acima.
+**Ação humana:** aguardar deploy Vercel completar (~1–2 min após push `13b45ea`), limpar cache do Chrome Android, acessar a URL do app e tentar "Adicionar à tela inicial". Documentar resultado (funcionou/não funcionou + screenshot se possível).
+
+**Se não funcionar:** verificar no Chrome Android → `chrome://inspect` ou abrir DevTools e verificar a aba Application → Service Workers e Manifest.
+
+**Após instalação confirmada:** fornecer o arquivo PNG do ícone para substituição definitiva dos ícones gerados por IA.
 
 ## 13. O que o próximo agente NÃO deve fazer
 
-- Não fazer deploy público antes de corrigir a exposição da chave da API.
-- Não marcar auditoria como aprovada para produção — veredito atual é "Aprovado apenas para teste interno".
-- Não alterar escopo do MVP sem decisão humana.
-- Não reverter correções de tipagem ou testes existentes.
-- Não introduzir novos frameworks de teste além do Vitest.
-- Não inventar evidências de smoke-test — o teste deve ser executado por humano.
-- Não registrar avisos de IA sem aprovação prévia do texto pelo responsável pelo produto.
+- Não refazer a correção de segurança — já corrigida e validada por contexto independente
+- Não alterar `geminiService.ts` sem motivo — está correto (`getApiKey()` retorna `undefined`)
+- Não remover `skipWaiting` ou `clientsClaim` do Workbox — foram adicionados por necessidade real
+- Não reverter os headers do `vercel.json` — `no-cache` no SW é obrigatório para PWA
+- Não alterar o rewrite do `vercel.json` sem excluir `/api/*` — corre risco de quebrar o proxy
+- Não marcar instalação como confirmada sem evidência do usuário
+- Não abrir novas sprints sem decisão humana
+- Não implementar avisos de IA sem aprovação prévia do texto pelo usuário
 
 ## 14. Segurança para troca de sessão
 
-- Seguro rodar `/new`? Com ressalvas
-- Motivo: Bloqueador crítico de segurança corrigido e documentado. Build, lint e 23 testes passando. Bundle verificado sem a chave de API. Estado atual e handoff atualizados. Ressalva: smoke-test visual humano e atualização das variáveis na Vercel ainda pendentes.
-- Nome sugerido para a nova sessão: NutriTrack-Smoke-Test-Deploy
+- Seguro rodar `/new`? **Com ressalvas**
+- Motivo: Todos os commits estão no GitHub. O estado está documentado. A ressalva é que a instalação Android ainda não foi confirmada pelo usuário, e o smoke-test geral ainda não foi executado.
+- Nome sugerido para a nova sessão: `NutriTrack-PWA-Install-Validation`

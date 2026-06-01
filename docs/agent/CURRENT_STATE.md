@@ -2,44 +2,48 @@
 
 ## Estado atual
 
-Bloqueador crítico de segurança **corrigido e confirmado por validação independente** (2026-06-01). `geminiService.ts` linha 7: `const getApiKey = () => undefined`. `vite.config.ts` sem injeção de segredo. Bundle `dist/assets/*.js` verificado com **0 ocorrências** de `OPENROUTER_API_KEY` após build executado de forma independente. Lint/typecheck e 23 testes unitários reconfirmados. Relatório de validação salvo em `/docs/audit/validation-report.md`. Veredito da validação independente: **Aprovado para teste interno**.
+MVP v1.2.0 completo e publicado no GitHub (`main`, commit `13b45ea`). PWA Android hardening aplicado nesta sessão: ícone 192×192 redimensionado corretamente, `skipWaiting` ativado, `vercel.json` corrigido com `no-cache` para SW/manifest. Deploy Vercel automático disparado pelo último push. Instalação real no Android **ainda não confirmada pelo usuário** — é a próxima ação.
 
 ## Última ação relevante
 
-Validação pós-correção independente executada em 2026-06-01. Execução independente de `npm run test -- --run` (23/23 passou), `npm run lint` (zero erros), `npm run build` (✓ 6.10s, PWA v1.2.0) e busca no bundle (0 ocorrências de chave). Relatório salvo em `/docs/audit/validation-report.md`.
+Commit `13b45ea` — corrige 3 bloqueadores de instalação PWA: dimensão real do ícone 192×192, `skipWaiting` no Workbox, headers `no-cache` para `sw.js` e `manifest.webmanifest` no Vercel.
 
 ## Arquivos relevantes
 
-- `/src/services/geminiService.ts` — corrigido e confirmado: `getApiKey()` retorna `undefined`; proxy exclusivo
-- `/vite.config.ts` — corrigido e confirmado: sem injeção de segredo no bundle
-- `/api/openrouter-proxy.ts` — correto e inalterado; canal exclusivo para IA
-- `/docs/audit/audit-fixes.md` — relatório de correção pós-auditoria
-- `/docs/audit/validation-report.md` — relatório de validação independente (criado 2026-06-01)
-- `/docs/evolution/out-of-scope-changes.md` — 3 entradas documentadas e verificadas
+- `public/pwa-192x192.png` — 192×192 real (37KB); redimensionado via sharp
+- `public/pwa-512x512.png` — ícone principal PWA
+- `public/pwa-maskable-512x512.png` — adaptive icon Android
+- `vite.config.ts` — manifest completo + Workbox skipWaiting
+- `vercel.json` — headers corrigidos; SW sem cache; API excluída do rewrite
+- `index.html` — meta tags Android/iOS
+- `src/services/geminiService.ts` — getApiKey() retorna undefined (seguro)
+- `api/openrouter-proxy.ts` — canal exclusivo OpenRouter
+- `docs/audit/validation-report.md` — validação independente de segurança
 
 ## Pendências imediatas
 
-- Atualizar variáveis de ambiente na Vercel: remover `VITE_OPENROUTER_API_KEY`; confirmar que `OPENROUTER_API_KEY` existe sem prefixo `VITE_` no servidor.
-- Smoke-test visual humano do fluxo principal (perfil, refeição, água, treino, histórico, exportação, backup/importação, reset, offline).
-- Aprovação humana do texto dos avisos de IA e privacidade (PRD seção 20.8).
-- Após aprovação: implementar avisos nos locais exigidos pelo PRD.
+- Limpar cache do Chrome Android e testar instalação "Adicionar à tela inicial"
+- Aguardar deploy Vercel completar (~1–2 min após push 13b45ea)
+- Confirmar variáveis de ambiente no dashboard Vercel (OPENROUTER_API_KEY sem VITE_)
+- Usuário deve fornecer PNG do ícone próprio para substituição
 
 ## Riscos atuais
 
-- Variáveis de ambiente da Vercel ainda não atualizadas (ação humana pendente — não verificável por agente).
-- Bugs visuais potenciais — nenhum smoke-test visual executado.
-- Avisos de IA e privacidade ausentes da interface.
+- Instalação Android não confirmada — smoke-test humano pendente
+- Variáveis Vercel não verificadas — IA pode falhar em produção
+- Avisos de IA ausentes da interface (PRD seção 20.8) — aguardando aprovação de texto
 
 ## Próxima ação recomendada
 
-Smoke-test visual humano do fluxo principal + confirmação das variáveis na Vercel. Ambas requerem ação humana. Após isso, obter aprovação do texto dos avisos de IA.
+Limpar cache do Chrome Android → acessar URL do app → Menu (⋮) → Adicionar à tela inicial. Documentar resultado.
 
 ## Não fazer agora
 
-- Não fazer deploy público antes do smoke-test humano e atualização das variáveis na Vercel.
-- Não alterar escopo ou abrir novas sprints sem decisão humana.
-- Não marcar como "aprovado para produção" até smoke-test documentado e variáveis Vercel confirmadas.
+- Não abrir novas sprints sem decisão humana
+- Não implementar avisos de IA sem aprovação do texto
+- Não reverter skipWaiting ou headers no-cache do vercel.json
+- Não marcar instalação como confirmada sem evidência
 
 ## Seguro rodar `/new`?
 
-Com ressalvas — Correção crítica confirmada por validação independente. Build, lint e testes reconfirmados. Ressalva: smoke-test visual humano, variáveis Vercel e avisos de IA ainda pendentes.
+Com ressalvas — estado documentado e commits no GitHub. Ressalva: instalação Android e smoke-test ainda pendentes.
