@@ -33,6 +33,7 @@ export default async function handler(req: Request) {
 
     const headers = new Headers(req.headers);
     headers.delete('host');
+    headers.delete('content-length'); // IMPORTANT: we modified the body length
     // Ensure we send the correct authorization header
     headers.set('Authorization', `Bearer ${apiKey}`);
 
