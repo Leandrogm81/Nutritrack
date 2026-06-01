@@ -36,12 +36,13 @@ export default async function handler(req: Request) {
     // Ensure we send the correct authorization header
     headers.set('Authorization', `Bearer ${apiKey}`);
 
+    // SECURITY / STABILITY: Since body is now a string (bodyText), duplex: 'half' is NOT required
+    // and can cause Edge fetch calls to hang/timeout (resulting in a 504 error).
     const proxyRes = await fetch(targetUrl.toString(), {
       method: req.method,
       headers,
       body: bodyText,
-      duplex: 'half',
-    } as any);
+    });
 
     return new Response(proxyRes.body, {
       status: proxyRes.status,
